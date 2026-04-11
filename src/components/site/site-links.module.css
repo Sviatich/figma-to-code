@@ -1,0 +1,37 @@
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 22px;
+  padding: 4px 22px;
+}
+
+.links a {
+  color: var(--ink-soft);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  transition:
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.links a:hover {
+  color: var(--ink);
+}
+
+.links a:focus-visible {
+  outline: none;
+  color: var(--ink);
+}
+
+.links a:active {
+  opacity: 0.72;
+}
+
+@media (max-width: 720px) {
+  .links {
+    justify-content: flex-start;
+    gap: 10px 18px;
+    padding: 16px 18px;
+  }
+}

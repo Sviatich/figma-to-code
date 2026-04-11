@@ -28,6 +28,10 @@ export function parseFigmaNode(
     fontSize: node.style?.fontSize ?? null,
     fontWeight: node.style?.fontWeight ?? null,
     lineHeight: node.style?.lineHeightPx ?? null,
+    letterSpacing: node.style?.letterSpacing ?? null,
+    textTransform: mapTextCase(node.style?.textCase),
+    textDecoration: mapTextDecoration(node.style?.textDecoration),
+    textAlign: mapTextAlign(node.style?.textAlignHorizontal),
     textColor: extractTextColor(node),
     cornerRadius: node.cornerRadius ?? null,
     backgroundColor: extractBackgroundColor(node),
@@ -96,4 +100,46 @@ function toCssColor(color: FigmaRawColor) {
   const a = color.a ?? 1;
 
   return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
+function mapTextCase(value?: string | null) {
+  switch (value) {
+    case "UPPER":
+      return "uppercase";
+    case "LOWER":
+      return "lowercase";
+    case "TITLE":
+      return "capitalize";
+    case "SMALL_CAPS":
+    case "SMALL_CAPS_FORCED":
+      return "small-caps";
+    default:
+      return null;
+  }
+}
+
+function mapTextDecoration(value?: string | null) {
+  switch (value) {
+    case "UNDERLINE":
+      return "underline";
+    case "STRIKETHROUGH":
+      return "line-through";
+    default:
+      return null;
+  }
+}
+
+function mapTextAlign(value?: string | null) {
+  switch (value) {
+    case "LEFT":
+      return "left";
+    case "CENTER":
+      return "center";
+    case "RIGHT":
+      return "right";
+    case "JUSTIFIED":
+      return "justify";
+    default:
+      return null;
+  }
 }

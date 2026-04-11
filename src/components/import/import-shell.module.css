@@ -6,7 +6,7 @@
 }
 
 .shell {
-  width: min(860px, 100%);
+  width: min(640px, 100%);
   display: grid;
   gap: 24px;
 }
@@ -18,7 +18,7 @@
 }
 
 .title {
-  font-size: clamp(2.8rem, 8vw, 5.8rem);
+  font-size: clamp(2.8rem, 8vw, 6.3rem);
   line-height: 0.94;
   letter-spacing: -0.07em;
 }
@@ -34,7 +34,7 @@
 .panel {
   padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 10px;
   background: var(--surface);
   backdrop-filter: blur(22px);
   box-shadow: var(--shadow);
@@ -63,7 +63,7 @@
 
 .linkRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
 }
@@ -73,13 +73,16 @@
   min-height: 51px;
   padding: 0 20px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 5px;
   background: #ffffff;
   outline: none;
   font-size: 1rem;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    background-color 160ms ease;
 }
 
-.ghostButton,
 .primaryButton {
   display: inline-flex;
   align-items: center;
@@ -87,19 +90,40 @@
   gap: 8px;
   min-height: 51px;
   padding: 0 18px;
-  border-radius: 10px;
+  border-radius: 5px;
   font-weight: 600;
-}
-
-.ghostButton {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.78);
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 120ms ease;
 }
 
 .primaryButton {
   border: none;
   background: var(--accent);
   color: #ffffff;
+}
+
+.linkInput:hover {
+  border-color: rgba(20, 32, 51, 0.18);
+}
+
+.linkInput:focus-visible {
+  border-color: rgba(20, 32, 51, 0.24);
+  box-shadow: 0 0 0 3px rgba(20, 32, 51, 0.08);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.primaryButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 32, 51, 0.12);
+}
+
+.primaryButton:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .figmaIcon {
@@ -140,20 +164,23 @@
 .progressTrack {
   height: 10px;
   overflow: hidden;
-  border-radius: 999px;
+  border-radius: 5px;
   background: rgba(20, 32, 51, 0.08);
 }
 
 .progressBar {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6c92ff 0%, #142033 100%);
+  background: rgb(20,32,51);
   transition: width 220ms ease;
 }
 
 .framesGrid {
   display: grid;
   gap: 12px;
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .frameCard {
@@ -161,7 +188,7 @@
   gap: 8px;
   padding: 16px 18px;
   border: 1px solid transparent;
-  border-radius: 20px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.76);
   text-align: left;
   transition:
@@ -173,6 +200,17 @@
 .frameCard:hover {
   transform: translateY(-2px);
   border-color: rgba(20, 32, 51, 0.12);
+  background: rgba(247, 249, 255, 0.94);
+}
+
+.frameCard:focus-visible {
+  outline: none;
+  border-color: rgba(20, 32, 51, 0.18);
+  box-shadow: 0 0 0 3px rgba(20, 32, 51, 0.08);
+}
+
+.frameCard:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .frameCardActive {

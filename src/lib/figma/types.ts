@@ -49,7 +49,10 @@ export type FigmaRawNode = {
     fontWeight?: number;
     fontSize?: number;
     lineHeightPx?: number;
+    letterSpacing?: number;
     textAlignHorizontal?: string;
+    textCase?: string;
+    textDecoration?: string;
   };
 };
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ZodError } from "zod";
+import { SiteLinks } from "@/components/site/site-links";
 import {
   loadFigmaRequestSchema,
   loadFigmaResponseSchema,
@@ -38,6 +39,11 @@ type ImportShellProps = {
   figmaReason?: string;
 };
 
+type PersistedImportState = {
+  figmaUrl: string;
+  loadResult: LoadResult | null;
+};
+
 const STORAGE_KEY = "transfig:last-import";
 
 export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
@@ -49,6 +55,7 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
   const [error, setError] = useState("");
   const [isLoadingFrames, setIsLoadingFrames] = useState(false);
   const [activeFrameId, setActiveFrameId] = useState<string | null>(null);
+  const [storageReady, setStorageReady] = useState(false);
 
   const sessionQuery = useQuery<AuthSession>({
     queryKey: ["figma-session"],
@@ -66,21 +73,25 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
+      const navigationEntry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
 
-      if (!raw) {
+      if (navigationEntry?.type === "reload") {
+        sessionStorage.removeItem(STORAGE_KEY);
+        setStorageReady(true);
         return;
       }
 
-      const parsed = JSON.parse(raw) as {
-        figmaUrl: string;
-        loadResult: LoadResult | null;
-      };
+      const raw = sessionStorage.getItem(STORAGE_KEY);
 
-      setFigmaUrl(parsed.figmaUrl ?? "");
-      setLoadResult(parsed.loadResult ?? null);
+      if (raw) {
+        const parsed = JSON.parse(raw) as PersistedImportState;
+        setFigmaUrl(parsed.figmaUrl ?? "");
+        setLoadResult(parsed.loadResult ?? null);
+      }
     } catch {
       sessionStorage.removeItem(STORAGE_KEY);
+    } finally {
+      setStorageReady(true);
     }
   }, []);
 
@@ -109,14 +120,22 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
   }, [sessionQuery.data]);
 
   useEffect(() => {
-    sessionStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        figmaUrl,
-        loadResult,
-      }),
-    );
-  }, [figmaUrl, loadResult]);
+    if (!storageReady) {
+      return;
+    }
+
+    if (!figmaUrl.trim() && !loadResult) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    const payload: PersistedImportState = {
+      figmaUrl,
+      loadResult,
+    };
+
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }, [figmaUrl, loadResult, storageReady]);
 
   async function handleLoad() {
     try {
@@ -194,19 +213,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
     }
   }
 
-  async function handleLogout() {
-    await fetch("/api/auth/figma/logout", {
-      method: "POST",
-    });
-
-    await sessionQuery.refetch();
-    setLoadResult(null);
-    setError("");
-    setStatus("");
-    setProgress(0);
-    sessionStorage.removeItem(STORAGE_KEY);
-  }
-
   function buildSourcePayload(): FigmaSourceDto {
     return {
       kind: "figma-link",
@@ -233,10 +239,9 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
             <div className={styles.authHeader}>
               <div>
                 <strong>Подключение Figma</strong>
-                <p className={styles.hint}>
-                  Авторизуйтесь с помощью вашего аккаунта Figma, чтобы загрузить макет.
-                </p>
+                <p className={styles.hint}>Авторизуйтесь с помощью вашего аккаунта Figma</p>
               </div>
+
               <div className={styles.toolbarRight}>
                 <a className={styles.primaryButton} href="/api/auth/figma/start">
                   <FigmaIcon />
@@ -262,9 +267,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
                 disabled={!figmaUrl.trim() || isLoadingFrames || activeFrameId !== null}
               >
                 Загрузить макет
-              </button>
-              <button className={styles.ghostButton} type="button" onClick={handleLogout} disabled={isLoadingFrames || activeFrameId !== null}>
-                Сменить аккаунт
               </button>
             </div>
 
@@ -308,6 +310,8 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
             </div>
           </section>
         ) : null}
+
+        <SiteLinks />
       </section>
     </main>
   );

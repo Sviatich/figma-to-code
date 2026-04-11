@@ -24,10 +24,10 @@ body {
 body {
   min-height: 100%;
   color: var(--ink);
-  background:
+  /* background:
     radial-gradient(circle at top, rgba(162, 193, 255, 0.24), transparent 24%),
     radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.58), transparent 30%),
-    linear-gradient(180deg, #fbfaf7 0%, var(--bg) 100%);
+    linear-gradient(180deg, #fbfaf7 0%, var(--bg) 100%); */
   font-family: var(--font-sans), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

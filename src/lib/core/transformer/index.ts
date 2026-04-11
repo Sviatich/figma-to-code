@@ -154,8 +154,28 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.lineHeight = `${node.lineHeight}px`;
   }
 
+  if (node.letterSpacing !== null && role === "content") {
+    styles.letterSpacing = `${node.letterSpacing}px`;
+  }
+
   if (node.fontWeight && role === "content") {
     styles.fontWeight = `${node.fontWeight}`;
+  }
+
+  if (node.textTransform && role === "content") {
+    if (node.textTransform === "small-caps") {
+      styles.fontVariantCaps = "small-caps";
+    } else {
+      styles.textTransform = node.textTransform;
+    }
+  }
+
+  if (node.textDecoration && role === "content") {
+    styles.textDecoration = node.textDecoration;
+  }
+
+  if (node.textAlign && role === "content") {
+    styles.textAlign = node.textAlign;
   }
 
   if (node.assetUrl) {

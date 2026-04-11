@@ -17,6 +17,10 @@ export type ParsedNode = {
   fontSize: number | null;
   fontWeight: number | null;
   lineHeight: number | null;
+  letterSpacing: number | null;
+  textTransform: string | null;
+  textDecoration: string | null;
+  textAlign: string | null;
   textColor: string | null;
   cornerRadius: number | null;
   backgroundColor: string | null;
