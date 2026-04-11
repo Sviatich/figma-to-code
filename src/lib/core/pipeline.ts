@@ -26,6 +26,11 @@ export async function runTransformationPipeline({ source, selectedNodeId }: RunP
   });
 
   const parsedNode = parseFigmaNode(sourceNode, assetUrls);
+
+  if (!parsedNode) {
+    throw new Error("Выбранный узел скрыт в Figma и не может быть отрисован.");
+  }
+
   const transformedNode = transformNode(parsedNode);
 
   return {

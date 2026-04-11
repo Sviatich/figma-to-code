@@ -17,15 +17,25 @@ export type FigmaRawFill = {
   color?: FigmaRawColor;
   opacity?: number;
   imageRef?: string;
+  scaleMode?: "FILL" | "FIT" | "TILE" | "STRETCH";
 };
 
 export type FigmaRawNode = {
   id?: string;
   name?: string;
   type?: string;
+  visible?: boolean;
   characters?: string;
   children?: FigmaRawNode[];
   fills?: FigmaRawFill[];
+  strokes?: FigmaRawFill[];
+  strokeWeight?: number;
+  individualStrokeWeights?: {
+    top?: number;
+    right?: number;
+    bottom?: number;
+    left?: number;
+  };
   backgroundColor?: FigmaRawColor;
   absoluteBoundingBox?: {
     x?: number;
@@ -35,9 +45,15 @@ export type FigmaRawNode = {
   };
   opacity?: number;
   layoutMode?: "NONE" | "HORIZONTAL" | "VERTICAL";
+  layoutWrap?: "NO_WRAP" | "WRAP";
   primaryAxisAlignItems?: string;
   counterAxisAlignItems?: string;
+  primaryAxisSizingMode?: "FIXED" | "AUTO";
+  counterAxisSizingMode?: "FIXED" | "AUTO";
   itemSpacing?: number;
+  layoutGrow?: number;
+  layoutAlign?: string;
+  layoutPositioning?: "AUTO" | "ABSOLUTE";
   paddingTop?: number;
   paddingRight?: number;
   paddingBottom?: number;

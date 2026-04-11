@@ -124,17 +124,14 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
       return;
     }
 
-    if (!figmaUrl.trim() && !loadResult) {
-      sessionStorage.removeItem(STORAGE_KEY);
-      return;
-    }
-
     const payload: PersistedImportState = {
       figmaUrl,
       loadResult,
     };
 
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    if (figmaUrl.trim() || loadResult) {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
   }, [figmaUrl, loadResult, storageReady]);
 
   async function handleLoad() {
@@ -239,7 +236,7 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
             <div className={styles.authHeader}>
               <div>
                 <strong>Подключение Figma</strong>
-                <p className={styles.hint}>Авторизуйтесь с помощью вашего аккаунта Figma</p>
+                <p className={styles.hint}>Авторизуйтесь с помощью вашего аккаунта</p>
               </div>
 
               <div className={styles.toolbarRight}>

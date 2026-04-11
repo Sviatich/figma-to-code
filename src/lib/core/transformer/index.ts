@@ -1,6 +1,9 @@
 import type { ParsedNode, TransformedNode } from "../types";
 
-export function transformNode(node: ParsedNode, parentLayoutMode: ParsedNode["layout"]["mode"] | "root" = "root"): TransformedNode {
+export function transformNode(
+  node: ParsedNode,
+  parentLayoutMode: ParsedNode["layout"]["mode"] | "root" = "root",
+): TransformedNode {
   // Transformer назначает более честный HTML-тег и переносит веб-стили.
   const role = inferRole(node);
   const tag = inferTag(node, role);
@@ -15,7 +18,7 @@ export function transformNode(node: ParsedNode, parentLayoutMode: ParsedNode["la
     role,
     isComponentCandidate: ["COMPONENT", "INSTANCE"].includes(node.type),
     styles: buildStyles(node, role, parentLayoutMode),
-    children: node.children.map((child) => transformNode(child, node.layout.mode)),
+    children: sortChildrenForLayout(node).map((child) => transformNode(child, node.layout.mode)),
   };
 }
 
@@ -33,6 +36,14 @@ function inferRole(node: ParsedNode): TransformedNode["role"] {
 
 function inferTag(node: ParsedNode, role: TransformedNode["role"]) {
   const lowerName = node.name.toLowerCase();
+
+  if (node.backgroundImageUrl) {
+    if (lowerName.includes("header") || lowerName.includes("hero") || lowerName.includes("banner")) {
+      return "section";
+    }
+
+    return "div";
+  }
 
   if (node.assetUrl && (node.type === "VECTOR" || node.type === "BOOLEAN_OPERATION" || node.type === "STAR" || node.type === "LINE")) {
     return "img";
@@ -100,10 +111,14 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     position: "relative",
     margin: "0",
   };
+  const isRenderedAssetImage = Boolean(node.assetUrl && !node.backgroundImageUrl);
 
   if (node.layout.mode !== "none") {
     styles.display = "flex";
     styles.flexDirection = node.layout.mode === "row" ? "row" : "column";
+    styles.flexWrap = node.layout.wrap;
+    styles.justifyContent = mapJustifyContent(node.layout.primaryAxisAlign);
+    styles.alignItems = mapAlignItems(node.layout.counterAxisAlign);
   } else if (node.children.length > 0) {
     styles.display = "block";
   }
@@ -116,8 +131,42 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.padding = node.layout.padding.map((value) => `${value}px`).join(" ");
   }
 
-  if (node.backgroundColor) {
-    styles.background = node.backgroundColor;
+  if (node.backgroundColor && !isRenderedAssetImage) {
+    styles.backgroundColor = node.backgroundColor;
+  }
+
+  if (node.borderColor && !isRenderedAssetImage) {
+    if (node.borderSides) {
+      if (node.borderSides.top > 0) {
+        styles.borderTop = `${node.borderSides.top}px solid ${node.borderColor}`;
+      }
+
+      if (node.borderSides.right > 0) {
+        styles.borderRight = `${node.borderSides.right}px solid ${node.borderColor}`;
+      }
+
+      if (node.borderSides.bottom > 0) {
+        styles.borderBottom = `${node.borderSides.bottom}px solid ${node.borderColor}`;
+      }
+
+      if (node.borderSides.left > 0) {
+        styles.borderLeft = `${node.borderSides.left}px solid ${node.borderColor}`;
+      }
+    } else if (node.borderWidth && node.borderWidth > 0) {
+      styles.border = `${node.borderWidth}px solid ${node.borderColor}`;
+    }
+  }
+
+  if (node.backgroundImageUrl) {
+    styles.backgroundImage = `url("${node.backgroundImageUrl}")`;
+    styles.backgroundRepeat = "no-repeat";
+    styles.backgroundPosition = "center";
+    styles.backgroundSize = node.backgroundSize ?? "cover";
+    styles.overflow = "hidden";
+  }
+
+  if (node.backgroundColor && node.backgroundImageUrl) {
+    styles.backgroundImage = `linear-gradient(${node.backgroundColor}, ${node.backgroundColor}), url("${node.backgroundImageUrl}")`;
   }
 
   if (node.textColor && role === "content") {
@@ -134,12 +183,22 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
   }
 
   if (node.width) {
-    styles.width = `${Math.round(node.width)}px`;
-    styles.maxWidth = "100%";
+    if (parentLayoutMode !== "none" && node.layoutGrow > 0) {
+      styles.width = "auto";
+      styles.flexBasis = "0";
+      styles.flexGrow = `${node.layoutGrow}`;
+      styles.flexShrink = "1";
+      styles.minWidth = "0";
+    } else {
+      styles.width = `${Math.round(node.width)}px`;
+      styles.maxWidth = "100%";
+    }
   }
 
   if (node.height && role !== "content") {
-    styles.minHeight = `${Math.round(node.height)}px`;
+    if (!(parentLayoutMode !== "none" && node.layout.counterAxisSizing === "auto")) {
+      styles.minHeight = `${Math.round(node.height)}px`;
+    }
   }
 
   if (node.fontSize && role === "content") {
@@ -178,13 +237,13 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.textAlign = node.textAlign;
   }
 
-  if (node.assetUrl) {
+  if (node.assetUrl && !node.backgroundImageUrl) {
     styles.__assetUrl = node.assetUrl;
     styles.objectFit = "cover";
     styles.display = "block";
   }
 
-  if (parentLayoutMode === "none" && node.x !== null && node.y !== null) {
+  if ((parentLayoutMode === "none" || node.layoutPositioning === "absolute") && node.x !== null && node.y !== null) {
     styles.position = "absolute";
     styles.left = `${Math.round(node.x)}px`;
     styles.top = `${Math.round(node.y)}px`;
@@ -204,10 +263,102 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.width = "fit-content";
   }
 
+  if (parentLayoutMode !== "none") {
+    if (node.layoutAlign === "stretch") {
+      styles.alignSelf = "stretch";
+    }
+
+    if (node.layoutAlign === "center") {
+      styles.alignSelf = "center";
+    }
+
+    if (node.layoutAlign === "end") {
+      styles.alignSelf = "flex-end";
+    }
+
+    if (node.layoutAlign === "start") {
+      styles.alignSelf = "flex-start";
+    }
+  }
+
   return styles;
 }
 
 function looksLikeButton(node: ParsedNode) {
   const lowerName = node.name.toLowerCase();
-  return lowerName.includes("button") || lowerName.includes("cta") || lowerName.includes("action");
+  const looksLikeActionName =
+    lowerName.includes("button") ||
+    lowerName === "cta" ||
+    lowerName.endsWith("-button") ||
+    lowerName.includes("btn");
+
+  const hasChildren = node.children.length > 0;
+  const hasOwnText = Boolean(node.textContent.trim());
+  const isLeafLikeControl = !hasChildren || (hasChildren && node.children.every((child) => child.type === "TEXT"));
+  const hasCompactHeight = node.height !== null && node.height <= 96;
+
+  if (!looksLikeActionName) {
+    return false;
+  }
+
+  return isLeafLikeControl && (hasOwnText || hasChildren) && hasCompactHeight;
+}
+
+function mapJustifyContent(value: ParsedNode["layout"]["primaryAxisAlign"]) {
+  switch (value) {
+    case "center":
+      return "center";
+    case "end":
+      return "flex-end";
+    case "space-between":
+      return "space-between";
+    default:
+      return "flex-start";
+  }
+}
+
+function mapAlignItems(value: ParsedNode["layout"]["counterAxisAlign"]) {
+  switch (value) {
+    case "center":
+      return "center";
+    case "end":
+      return "flex-end";
+    case "stretch":
+      return "stretch";
+    default:
+      return "flex-start";
+  }
+}
+
+function sortChildrenForLayout(node: ParsedNode) {
+  if (node.layout.mode === "none") {
+    return node.children;
+  }
+
+  const hasAbsoluteChildren = node.children.some((child) => child.layoutPositioning === "absolute");
+
+  // Если внутри flex-контейнера есть абсолютные слои, сохраняем исходный z-order Figma.
+  if (hasAbsoluteChildren) {
+    return node.children;
+  }
+
+  return [...node.children].sort((left, right) => {
+    if (node.layout.mode === "row") {
+      const deltaX = (left.x ?? 0) - (right.x ?? 0);
+
+      if (Math.abs(deltaX) > 1) {
+        return deltaX;
+      }
+
+      return (left.y ?? 0) - (right.y ?? 0);
+    }
+
+    const deltaY = (left.y ?? 0) - (right.y ?? 0);
+
+    if (Math.abs(deltaY) > 1) {
+      return deltaY;
+    }
+
+    return (left.x ?? 0) - (right.x ?? 0);
+  });
 }

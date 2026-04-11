@@ -1,7 +1,12 @@
 export type ParsedLayout = {
   mode: "none" | "row" | "column";
+  wrap: "nowrap" | "wrap";
   gap: number;
   padding: [number, number, number, number];
+  primaryAxisAlign: "start" | "center" | "end" | "space-between";
+  counterAxisAlign: "start" | "center" | "end" | "stretch";
+  primaryAxisSizing: "fixed" | "auto";
+  counterAxisSizing: "fixed" | "auto";
 };
 
 export type ParsedNode = {
@@ -24,8 +29,21 @@ export type ParsedNode = {
   textColor: string | null;
   cornerRadius: number | null;
   backgroundColor: string | null;
+  borderColor: string | null;
+  borderWidth: number | null;
+  borderSides: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  } | null;
+  backgroundImageUrl: string | null;
+  backgroundSize: "cover" | "contain" | "100% 100%" | null;
   assetUrl: string | null;
   opacity: number | null;
+  layoutGrow: number;
+  layoutAlign: "inherit" | "stretch" | "center" | "end" | "start" | null;
+  layoutPositioning: "auto" | "absolute";
   layout: ParsedLayout;
   effectsCount: number;
   children: ParsedNode[];
