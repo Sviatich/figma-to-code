@@ -1,66 +1,24 @@
 # Transfig
 
-Базовый стек для веб-сервиса, который:
+`Transfig` теперь собран вокруг модульного pipeline:
 
-- принимает `fileKey` и `nodeId` из Figma
-- запрашивает данные узла через Figma REST API
-- прогоняет их через генератор кода
-- показывает preview результата
-- отдает архив с исходниками
+`Figma API -> Parser -> Transformer -> Generator -> Export`
 
-## Стек
+## Архитектура
 
-- Frontend: `React`, `TypeScript`, `Next.js App Router`, `CSS Modules`, `TanStack Query`, `Zod`
-- Backend: `Next.js Route Handlers` на `Node.js`
-- Хранилище: без БД, in-memory store для быстрого старта
+- `src/app` — страницы и route handlers на `Next.js App Router`
+- `src/components` — UI для импорта и рабочей области `preview/code`
+- `src/lib/figma` — клиент загрузки данных Figma, парсинг ссылки, выбор frame
+- `src/lib/core` — parser, transformer, generator, exporter
+- `src/lib/projects` — схемы, сервис проекта и in-memory store
 
-## Что уже реализовано
+## Пользовательский сценарий
 
-- UI-форма для импорта Figma-макета
-- клиентский state/query-слой через `TanStack Query`
-- общие схемы валидации через `Zod`
-- серверный модуль работы с Figma API
-- генератор демо-артефактов для будущего пайплайна `figma -> code`
-- preview в `iframe`
-- скачивание ZIP-архива с файлами
-
-## API
-
-### `POST /api/projects`
-
-```json
-{
-  "name": "Landing Import",
-  "figmaFileKey": "AbCdEf123456",
-  "nodeId": "1:2",
-  "accessToken": "optional"
-}
-```
-
-### `GET /api/projects`
-
-Возвращает список созданных проектов.
-
-### `GET /api/projects/:projectId`
-
-Возвращает один проект с файлами и метаданными.
-
-### `GET /api/projects/:projectId/preview`
-
-Возвращает HTML preview.
-
-### `GET /api/projects/:projectId/download`
-
-Возвращает ZIP-архив с исходниками.
-
-## Figma API
-
-Сейчас сервер использует официальный REST API Figma:
-
-- `https://api.figma.com`
-- `GET /v1/files/:key/nodes?ids=:nodeId`
-
-Если токен не передан в форме и не задан в `.env.local`, приложение автоматически переходит в `mock`-режим.
+1. На главной странице пользователь вставляет ссылку Figma или прикрепляет JSON-экспорт.
+2. `/api/figma/load` загружает структуру и отдаёт список доступных frame.
+3. Пользователь выбирает frame и запускает `/api/transform`.
+4. Pipeline создаёт внутреннюю модель, генерирует код и сохраняет результат проекта.
+5. В рабочей области доступны вкладки `Preview` и `Code`, а также экспорт ZIP через `/api/export/:projectId`.
 
 ## Запуск
 
@@ -68,5 +26,3 @@
 npm install
 npm run dev
 ```
-
-Открыть: `http://localhost:3000`

@@ -1,5 +1,5 @@
-import JSZip from "jszip";
-import { findProject } from "@/server/services/project-service";
+import { buildProjectArchive } from "@/lib/core/exporter";
+import { findProject } from "@/lib/projects/service";
 
 type RouteContext = {
   params: Promise<{
@@ -9,20 +9,14 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { projectId } = await context.params;
-  const project = findProject(projectId);
+  const project = await findProject(projectId);
 
   if (!project) {
     return new Response("Project not found", { status: 404 });
   }
 
-  const archive = new JSZip();
-
-  project.files.forEach((file) => {
-    archive.file(file.path, file.content);
-  });
-
-  const body = await archive.generateAsync({ type: "arraybuffer" });
-  const downloadName = `${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "generated-site"}.zip`;
+  const body = await buildProjectArchive(project.files);
+  const downloadName = `${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "generated-project"}.zip`;
 
   return new Response(body, {
     headers: {

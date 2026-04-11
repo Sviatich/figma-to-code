@@ -1,15 +1,14 @@
 :root {
-  --bg: #f5efe4;
-  --surface: rgba(255, 250, 242, 0.82);
-  --surface-strong: #fffaf2;
-  --ink: #1f1d1a;
-  --ink-soft: #5c564e;
-  --line: rgba(31, 29, 26, 0.12);
-  --accent: #ff6b2c;
-  --accent-soft: rgba(255, 107, 44, 0.12);
-  --accent-strong: #d94d11;
-  --success: #1e8e5a;
-  --shadow: 0 20px 60px rgba(87, 52, 24, 0.14);
+  --bg: #f2efe8;
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-strong: #ffffff;
+  --ink: #142033;
+  --ink-soft: #61708a;
+  --line: rgba(20, 32, 51, 0.1);
+  --accent: #142033;
+  --accent-soft: rgba(20, 32, 51, 0.08);
+  --accent-strong: #0b1424;
+  --shadow: 0 24px 80px rgba(20, 32, 51, 0.12);
 }
 
 html {
@@ -26,9 +25,9 @@ body {
   min-height: 100%;
   color: var(--ink);
   background:
-    radial-gradient(circle at top left, rgba(255, 154, 98, 0.22), transparent 28%),
-    radial-gradient(circle at top right, rgba(255, 224, 136, 0.28), transparent 24%),
-    linear-gradient(180deg, #fff9f1 0%, var(--bg) 45%, #efe6d7 100%);
+    radial-gradient(circle at top, rgba(162, 193, 255, 0.24), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.58), transparent 30%),
+    linear-gradient(180deg, #fbfaf7 0%, var(--bg) 100%);
   font-family: var(--font-sans), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -50,6 +49,10 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 code,

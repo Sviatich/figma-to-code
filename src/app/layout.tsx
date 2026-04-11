@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
 });
@@ -15,7 +15,7 @@ const jetBrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Transfig",
-  description: "Workbench for importing Figma layouts, generating code, previewing result, and downloading sources.",
+  description: "Сервис для поэтапной трансляции Figma-макетов в код через parser, transformer, generator и exporter.",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={`${spaceGrotesk.variable} ${jetBrainsMono.variable}`}>
+    <html lang="ru" className={`${inter.variable} ${jetBrainsMono.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

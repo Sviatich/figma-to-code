@@ -1,0 +1,200 @@
+.page {
+  min-height: calc(100vh - 48px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.shell {
+  width: min(860px, 100%);
+  display: grid;
+  gap: 24px;
+}
+
+.intro {
+  display: grid;
+  gap: 14px;
+  text-align: center;
+}
+
+.title {
+  font-size: clamp(2.8rem, 8vw, 5.8rem);
+  line-height: 0.94;
+  letter-spacing: -0.07em;
+}
+
+.description {
+  max-width: 650px;
+  margin: 0 auto;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.panel {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  backdrop-filter: blur(22px);
+  box-shadow: var(--shadow);
+}
+
+.authCard,
+.framesCard {
+  display: grid;
+  gap: 16px;
+}
+
+.authHeader,
+.framesHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.toolbarRight {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.linkRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.linkInput {
+  width: 100%;
+  min-height: 51px;
+  padding: 0 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  outline: none;
+  font-size: 1rem;
+}
+
+.ghostButton,
+.primaryButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 51px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.ghostButton {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.primaryButton {
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.figmaIcon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.primaryButton:disabled,
+.frameCard:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.inlineStatus {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.statusText,
+.hint,
+.frameMeta {
+  color: var(--ink-soft);
+}
+
+.hint,
+.error {
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.error {
+  color: #c03c2d;
+}
+
+.progressTrack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(20, 32, 51, 0.08);
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6c92ff 0%, #142033 100%);
+  transition: width 220ms ease;
+}
+
+.framesGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.frameCard {
+  display: grid;
+  gap: 8px;
+  padding: 16px 18px;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.76);
+  text-align: left;
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.frameCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(20, 32, 51, 0.12);
+}
+
+.frameCardActive {
+  border-color: rgba(20, 32, 51, 0.22);
+  background: rgba(216, 226, 255, 0.72);
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 18px;
+  }
+
+  .panel {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .authHeader,
+  .framesHeader,
+  .linkRow {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { findProject } from "@/server/services/project-service";
+import { findProject } from "@/lib/projects/service";
 
 type RouteContext = {
   params: Promise<{
@@ -9,7 +9,7 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { projectId } = await context.params;
-  const project = findProject(projectId);
+  const project = await findProject(projectId);
 
   if (!project) {
     return NextResponse.json({ message: "Project not found" }, { status: 404 });
