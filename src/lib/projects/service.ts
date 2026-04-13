@@ -8,7 +8,6 @@ import { getProject, listProjects, saveProject } from "./store";
 
 export async function loadFigmaFrames(source: FigmaSourceInput) {
   const file = await resolveFigmaFile(source);
-
   return {
     fileKey: file.fileKey,
     fileName: file.fileName,

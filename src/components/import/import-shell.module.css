@@ -15,6 +15,14 @@
   display: grid;
   gap: 14px;
   text-align: center;
+  justify-items: center;
+}
+
+.brandMark {
+  width: 58px;
+  height: 58px;
+  display: block;
+  object-fit: contain;
 }
 
 .title {
@@ -133,6 +141,7 @@
   flex: 0 0 auto;
 }
 
+
 .primaryButton:disabled,
 .frameCard:disabled {
   opacity: 0.6;
@@ -141,11 +150,9 @@
 
 .inlineStatus {
   display: grid;
-  gap: 10px;
   margin-top: 14px;
 }
 
-.statusText,
 .hint,
 .frameMeta {
   color: var(--ink-soft);
@@ -162,17 +169,49 @@
 }
 
 .progressTrack {
-  height: 10px;
+  height: 5px;
   overflow: hidden;
-  border-radius: 5px;
-  background: rgba(20, 32, 51, 0.08);
+  border-radius: 2px;
+  background: rgba(20, 32, 51, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .progressBar {
+  position: relative;
   height: 100%;
   border-radius: inherit;
-  background: rgb(20,32,51);
+  background: #142033;
   transition: width 220ms ease;
+}
+
+.progressBar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 52%;
+  min-width: 56px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 28%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.05) 72%,
+    transparent 100%
+  );
+  transform: translateX(-125%);
+  animation: progressShine 2.6s ease-in-out infinite;
+  pointer-events: none;
+  filter: blur(1px);
+}
+
+@keyframes progressShine {
+  0% {
+    transform: translateX(-125%);
+  }
+
+  100% {
+    transform: translateX(240%);
+  }
 }
 
 .framesGrid {

@@ -22,23 +22,32 @@ export function extractNodeIdFromUrl(url: string) {
   }
 }
 
-export function collectFrameOptions(root: FigmaRawNode) {
-  const frames: FigmaFrameOption[] = [];
+export function collectFrameOptions(root: FigmaRawNode): FigmaFrameOption[] {
+  const topLevelNodes =
+    root.children?.flatMap((child) => {
+      if (child.type === "CANVAS") {
+        return child.children ?? [];
+      }
 
-  walkTree(root, (node, depth) => {
+      return [child];
+    }) ?? [];
+
+  return topLevelNodes.flatMap((node) => {
     const nodeType = node.type ?? "UNKNOWN";
 
-    if (["FRAME", "SECTION", "COMPONENT", "INSTANCE"].includes(nodeType) && node.id) {
-      frames.push({
-        id: node.id,
-        name: node.name ?? "Без названия",
-        type: nodeType,
-        depth,
-      });
+    if (!["FRAME", "SECTION", "COMPONENT", "INSTANCE"].includes(nodeType) || !node.id) {
+      return [];
     }
-  });
 
-  return frames;
+    return [
+      {
+        id: node.id,
+        name: node.name ?? "Untitled",
+        type: nodeType,
+        depth: 0,
+      },
+    ];
+  });
 }
 
 export function findNodeById(root: FigmaRawNode, nodeId: string): FigmaRawNode | null {

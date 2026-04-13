@@ -40,6 +40,7 @@ export type ParsedNode = {
   backgroundImageUrl: string | null;
   backgroundSize: "cover" | "contain" | "100% 100%" | null;
   assetUrl: string | null;
+  assetFit: "cover" | "contain" | "fill" | null;
   opacity: number | null;
   layoutGrow: number;
   layoutAlign: "inherit" | "stretch" | "center" | "end" | "start" | null;

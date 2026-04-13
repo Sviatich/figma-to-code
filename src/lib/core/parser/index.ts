@@ -55,6 +55,7 @@ export function parseFigmaNode(
     backgroundImageUrl: extractBackgroundImageUrl(node, assetUrls),
     backgroundSize: extractBackgroundSize(node),
     assetUrl: extractAssetUrl(node, assetUrls),
+    assetFit: extractAssetFit(node),
     opacity: node.opacity ?? null,
     layoutGrow: node.layoutGrow ?? 0,
     layoutAlign: mapLayoutAlign(node.layoutAlign),
@@ -213,6 +214,21 @@ function extractBackgroundSize(node: FigmaRawNode): ParsedNode["backgroundSize"]
     case "FILL":
     default:
       return imageFill ? "cover" : null;
+  }
+}
+
+function extractAssetFit(node: FigmaRawNode): ParsedNode["assetFit"] {
+  const imageFill = node.fills?.find((fill) => fill.type === "IMAGE" && fill.visible !== false);
+
+  switch (imageFill?.scaleMode) {
+    case "FILL":
+      return "cover";
+    case "FIT":
+      return "contain";
+    case "STRETCH":
+      return "fill";
+    default:
+      return null;
   }
 }
 

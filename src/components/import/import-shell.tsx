@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ZodError } from "zod";
@@ -50,7 +51,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
   const router = useRouter();
   const [figmaUrl, setFigmaUrl] = useState("");
   const [loadResult, setLoadResult] = useState<LoadResult | null>(null);
-  const [status, setStatus] = useState("");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [isLoadingFrames, setIsLoadingFrames] = useState(false);
@@ -113,7 +113,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
   useEffect(() => {
     if (sessionQuery.data && !sessionQuery.data.connected) {
       setLoadResult(null);
-      setStatus("");
       setProgress(0);
       sessionStorage.removeItem(STORAGE_KEY);
     }
@@ -138,7 +137,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
     try {
       setError("");
       setIsLoadingFrames(true);
-      setStatus("Загружаем структуру файла из Figma");
       setProgress(24);
 
       const source = buildSourcePayload();
@@ -160,12 +158,10 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
 
       const parsed = loadFigmaResponseSchema.parse(json);
       setLoadResult(parsed);
-      setStatus("");
       setProgress(0);
     } catch (caughtError) {
       setLoadResult(null);
       setProgress(0);
-      setStatus("");
       setError(formatError(caughtError));
     } finally {
       setIsLoadingFrames(false);
@@ -176,7 +172,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
     try {
       setError("");
       setActiveFrameId(frameId);
-      setStatus("Генерируем проект по выбранному frame");
       setProgress(74);
 
       const source = buildSourcePayload();
@@ -204,7 +199,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
       router.push(`/projects/${json.id}`);
     } catch (caughtError) {
       setProgress(0);
-      setStatus("");
       setError(formatError(caughtError));
       setActiveFrameId(null);
     }
@@ -225,6 +219,15 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
     <main className={styles.page}>
       <section className={styles.shell}>
         <header className={styles.intro}>
+          <Image
+            className={styles.brandMark}
+            src="/brand-mark.png"
+            alt=""
+            aria-hidden="true"
+            width={58}
+            height={58}
+            priority
+          />
           <h1 className={styles.title}>Figma to code</h1>
           <p className={styles.description}>
             Выпускная квалификационная работа Петрина Святослава Андреевича
@@ -272,7 +275,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
                 <div className={styles.progressTrack}>
                   <div className={styles.progressBar} style={{ width: `${progress}%` }} />
                 </div>
-                <span className={styles.statusText}>{status}</span>
               </div>
             ) : null}
 

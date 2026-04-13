@@ -112,6 +112,9 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     margin: "0",
   };
   const isRenderedAssetImage = Boolean(node.assetUrl && !node.backgroundImageUrl);
+  const isFlexChild = parentLayoutMode !== "none" && parentLayoutMode !== "root";
+  const isAutoLayoutNode = node.layout.mode !== "none";
+  const isAbsolutelyPositioned = node.layoutPositioning === "absolute";
 
   if (node.layout.mode !== "none") {
     styles.display = "flex";
@@ -183,14 +186,30 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
   }
 
   if (node.width) {
-    if (parentLayoutMode !== "none" && node.layoutGrow > 0) {
+    const roundedWidth = `${Math.round(node.width)}px`;
+
+    if (isFlexChild && node.layoutGrow > 0) {
       styles.width = "auto";
       styles.flexBasis = "0";
       styles.flexGrow = `${node.layoutGrow}`;
       styles.flexShrink = "1";
       styles.minWidth = "0";
+    } else if (!isAbsolutelyPositioned && parentLayoutMode === "root" && isAutoLayoutNode) {
+      styles.width = "100%";
+      styles.maxWidth = "100%";
+      styles.minWidth = "0";
+    } else if (!isAbsolutelyPositioned && isFlexChild) {
+      styles.minWidth = "0";
+
+      if (parentLayoutMode === "column") {
+        styles.width = "100%";
+        styles.maxWidth = roundedWidth;
+      } else {
+        styles.width = `min(100%, ${roundedWidth})`;
+        styles.maxWidth = "100%";
+      }
     } else {
-      styles.width = `${Math.round(node.width)}px`;
+      styles.width = roundedWidth;
       styles.maxWidth = "100%";
     }
   }
@@ -239,8 +258,11 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
 
   if (node.assetUrl && !node.backgroundImageUrl) {
     styles.__assetUrl = node.assetUrl;
-    styles.objectFit = "cover";
     styles.display = "block";
+
+    if (node.assetFit) {
+      styles.objectFit = node.assetFit;
+    }
   }
 
   if ((parentLayoutMode === "none" || node.layoutPositioning === "absolute") && node.x !== null && node.y !== null) {
@@ -261,13 +283,10 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.border = "none";
     styles.cursor = "pointer";
     styles.width = "fit-content";
+    styles.maxWidth = "100%";
   }
 
   if (parentLayoutMode !== "none") {
-    if (node.layoutAlign === "stretch") {
-      styles.alignSelf = "stretch";
-    }
-
     if (node.layoutAlign === "center") {
       styles.alignSelf = "center";
     }
