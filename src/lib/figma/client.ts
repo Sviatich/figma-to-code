@@ -15,6 +15,7 @@ export async function resolveFigmaFile(source: FigmaSourceInput): Promise<FigmaR
   }
 
   const url = new URL(`https://api.figma.com/v1/files/${fileKey}`);
+  url.searchParams.set("geometry", "paths");
 
   const response = await fetch(url, {
     headers: buildFigmaHeaders(accessToken),

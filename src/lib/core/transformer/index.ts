@@ -17,6 +17,7 @@ export function transformNode(
     textContent: node.textContent,
     role,
     isComponentCandidate: ["COMPONENT", "INSTANCE"].includes(node.type),
+    attributes: buildAttributes(node),
     styles: buildStyles(node, role, parentLayoutMode),
     children: sortChildrenForLayout(node).map((child) => transformNode(child, node.layout.mode)),
   };
@@ -126,8 +127,10 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.display = "block";
   }
 
-  if (node.layout.gap > 0) {
-    styles.gap = `${node.layout.gap}px`;
+  const resolvedGap = resolveLayoutGap(node);
+
+  if (resolvedGap !== null) {
+    styles.gap = `${resolvedGap}px`;
   }
 
   if (node.layout.padding.some((value) => value > 0)) {
@@ -136,6 +139,10 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
 
   if (node.backgroundColor && !isRenderedAssetImage) {
     styles.backgroundColor = node.backgroundColor;
+  }
+
+  if (node.backgroundGradient && !isRenderedAssetImage) {
+    styles.backgroundImage = node.backgroundGradient;
   }
 
   if (node.borderColor && !isRenderedAssetImage) {
@@ -161,28 +168,55 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
   }
 
   if (node.backgroundImageUrl) {
-    styles.backgroundImage = `url("${node.backgroundImageUrl}")`;
-    styles.backgroundRepeat = "no-repeat";
-    styles.backgroundPosition = "center";
+    styles.backgroundImage = node.backgroundGradient
+      ? `${node.backgroundGradient}, url("${node.backgroundImageUrl}")`
+      : `url("${node.backgroundImageUrl}")`;
+    styles.backgroundRepeat = node.backgroundRepeat ?? "no-repeat";
+    styles.backgroundPosition = node.backgroundPosition ?? "center";
     styles.backgroundSize = node.backgroundSize ?? "cover";
     styles.overflow = "hidden";
-  }
-
-  if (node.backgroundColor && node.backgroundImageUrl) {
-    styles.backgroundImage = `linear-gradient(${node.backgroundColor}, ${node.backgroundColor}), url("${node.backgroundImageUrl}")`;
   }
 
   if (node.textColor && role === "content") {
     styles.color = node.textColor;
   }
 
-  if (node.cornerRadius) {
+  if (node.cornerRadii) {
+    styles.borderRadius = node.cornerRadii.map((radius) => `${radius}px`).join(" ");
+    styles.overflow = "hidden";
+  } else if (node.cornerRadius) {
     styles.borderRadius = `${node.cornerRadius}px`;
     styles.overflow = "hidden";
   }
 
   if (node.opacity !== null && node.opacity < 1) {
     styles.opacity = `${node.opacity}`;
+  }
+
+  if (node.boxShadow && role !== "content") {
+    styles.boxShadow = node.boxShadow;
+  }
+
+  if (node.textShadow && role === "content") {
+    styles.textShadow = node.textShadow;
+  }
+
+  if (node.layerBlur !== null) {
+    styles.filter = `blur(${Math.round(node.layerBlur)}px)`;
+  }
+
+  if (node.backgroundBlur !== null) {
+    styles.backdropFilter = `blur(${Math.round(node.backgroundBlur)}px)`;
+  }
+
+  if (node.rotation !== null && Math.abs(node.rotation) > 0.01) {
+    styles.rotate = `${roundCssNumber(node.rotation)}deg`;
+  }
+
+  if (node.scaleX !== null || node.scaleY !== null) {
+    const scaleX = roundCssNumber(node.scaleX ?? 1);
+    const scaleY = roundCssNumber(node.scaleY ?? 1);
+    styles.scale = `${scaleX} ${scaleY}`;
   }
 
   if (node.width) {
@@ -214,10 +248,8 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     }
   }
 
-  if (node.height && role !== "content") {
-    if (!(parentLayoutMode !== "none" && node.layout.counterAxisSizing === "auto")) {
-      styles.minHeight = `${Math.round(node.height)}px`;
-    }
+  if (node.height && role !== "content" && shouldApplyMinHeight(node, parentLayoutMode)) {
+    styles.minHeight = `${Math.round(node.height)}px`;
   }
 
   if (node.fontSize && role === "content") {
@@ -234,6 +266,18 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
 
   if (node.letterSpacing !== null && role === "content") {
     styles.letterSpacing = `${node.letterSpacing}px`;
+  }
+
+  if (node.paragraphIndent && role === "content") {
+    styles.textIndent = `${node.paragraphIndent}px`;
+  }
+
+  if (node.paragraphSpacing && role === "content") {
+    styles.marginBottom = `${node.paragraphSpacing}px`;
+  }
+
+  if (node.listSpacing && role === "content") {
+    styles.paddingInlineStart = `${node.listSpacing}px`;
   }
 
   if (node.fontWeight && role === "content") {
@@ -256,6 +300,10 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.textAlign = node.textAlign;
   }
 
+  if (role === "content") {
+    applyTextSizing(styles, node);
+  }
+
   if (node.assetUrl && !node.backgroundImageUrl) {
     styles.__assetUrl = node.assetUrl;
     styles.display = "block";
@@ -267,8 +315,7 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
 
   if ((parentLayoutMode === "none" || node.layoutPositioning === "absolute") && node.x !== null && node.y !== null) {
     styles.position = "absolute";
-    styles.left = `${Math.round(node.x)}px`;
-    styles.top = `${Math.round(node.y)}px`;
+    applyAbsoluteConstraints(styles, node);
   }
 
   if (node.layout.mode === "none" && node.children.length > 0) {
@@ -349,6 +396,76 @@ function mapAlignItems(value: ParsedNode["layout"]["counterAxisAlign"]) {
   }
 }
 
+function resolveLayoutGap(node: ParsedNode) {
+  if (node.layout.mode === "none" || node.layout.gap <= 0) {
+    return null;
+  }
+
+  const flowChildren = node.children.filter((child) => child.layoutPositioning !== "absolute");
+
+  if (flowChildren.length < 2) {
+    return roundCssNumber(node.layout.gap);
+  }
+
+  if (node.layout.primaryAxisAlign === "space-between") {
+    return null;
+  }
+
+  const axisSize = node.layout.mode === "row" ? node.width : node.height;
+  const axisRatioLimit = axisSize
+    ? axisSize * (node.layout.mode === "row" ? 0.12 : 0.1)
+    : node.layout.mode === "row"
+      ? 96
+      : 72;
+  const perChildLimit = axisSize ? axisSize / (flowChildren.length * 2) : node.layout.mode === "row" ? 72 : 56;
+  const maxReasonableGap = Math.max(
+    16,
+    Math.min(node.layout.mode === "row" ? 120 : 96, axisRatioLimit, perChildLimit),
+  );
+
+  return roundCssNumber(Math.min(node.layout.gap, maxReasonableGap));
+}
+
+function shouldApplyMinHeight(node: ParsedNode, parentLayoutMode: ParsedNode["layout"]["mode"] | "root") {
+  if (node.layoutPositioning === "absolute") {
+    return true;
+  }
+
+  if (parentLayoutMode !== "none" && parentLayoutMode !== "root" && node.layout.counterAxisSizing === "auto") {
+    return false;
+  }
+
+  const hasFlowChildren = node.children.some((child) => child.layoutPositioning !== "absolute");
+  const hasVisualContainerStyles = Boolean(
+    node.backgroundColor ||
+      node.backgroundGradient ||
+      node.backgroundImageUrl ||
+      node.assetUrl ||
+      node.borderColor ||
+      (node.borderWidth && node.borderWidth > 0) ||
+      (node.cornerRadius && node.cornerRadius > 0) ||
+      (node.cornerRadii && node.cornerRadii.some((radius) => radius > 0)) ||
+      node.boxShadow ||
+      node.backgroundBlur !== null ||
+      node.layerBlur !== null,
+  );
+  const hasMeaningfulPadding = node.layout.padding.some((value) => value > 0);
+
+  if (hasFlowChildren) {
+    return hasVisualContainerStyles || hasMeaningfulPadding;
+  }
+
+  if (hasVisualContainerStyles) {
+    return true;
+  }
+
+  if (node.layout.mode !== "none") {
+    return hasMeaningfulPadding;
+  }
+
+  return true;
+}
+
 function sortChildrenForLayout(node: ParsedNode) {
   if (node.layout.mode === "none") {
     return node.children;
@@ -380,4 +497,173 @@ function sortChildrenForLayout(node: ParsedNode) {
 
     return (left.x ?? 0) - (right.x ?? 0);
   });
+}
+
+function applyAbsoluteConstraints(styles: Record<string, string>, node: ParsedNode) {
+  const transforms: string[] = [];
+  const horizontal = node.constraints?.horizontal ?? "start";
+  const vertical = node.constraints?.vertical ?? "start";
+
+  switch (horizontal) {
+    case "end":
+      if (node.right !== null) {
+        styles.right = `${Math.round(node.right)}px`;
+      } else if (node.x !== null) {
+        styles.left = `${Math.round(node.x)}px`;
+      }
+      break;
+    case "center":
+      styles.left = "50%";
+
+      if (node.centerOffsetX !== null) {
+        styles.marginLeft = `${Math.round(node.centerOffsetX)}px`;
+      }
+
+      transforms.push("translateX(-50%)");
+      break;
+    case "stretch":
+      if (node.x !== null) {
+        styles.left = `${Math.round(node.x)}px`;
+      }
+
+      if (node.right !== null) {
+        styles.right = `${Math.round(node.right)}px`;
+      }
+
+      delete styles.width;
+      delete styles.maxWidth;
+      break;
+    case "scale":
+      if (node.parentWidth && node.x !== null && node.width !== null) {
+        styles.left = `${roundPercent((node.x / node.parentWidth) * 100)}%`;
+        styles.width = `${roundPercent((node.width / node.parentWidth) * 100)}%`;
+        delete styles.maxWidth;
+      } else if (node.x !== null) {
+        styles.left = `${Math.round(node.x)}px`;
+      }
+      break;
+    case "start":
+    default:
+      styles.left = `${Math.round(node.x ?? 0)}px`;
+      break;
+  }
+
+  switch (vertical) {
+    case "end":
+      if (node.bottom !== null) {
+        styles.bottom = `${Math.round(node.bottom)}px`;
+      } else if (node.y !== null) {
+        styles.top = `${Math.round(node.y)}px`;
+      }
+      break;
+    case "center":
+      styles.top = "50%";
+
+      if (node.centerOffsetY !== null) {
+        styles.marginTop = `${Math.round(node.centerOffsetY)}px`;
+      }
+
+      transforms.push("translateY(-50%)");
+      break;
+    case "stretch":
+      if (node.y !== null) {
+        styles.top = `${Math.round(node.y)}px`;
+      }
+
+      if (node.bottom !== null) {
+        styles.bottom = `${Math.round(node.bottom)}px`;
+      }
+
+      delete styles.minHeight;
+      if (node.height !== null) {
+        styles.height = "auto";
+      }
+      break;
+    case "scale":
+      if (node.parentHeight && node.y !== null && node.height !== null) {
+        styles.top = `${roundPercent((node.y / node.parentHeight) * 100)}%`;
+        styles.height = `${roundPercent((node.height / node.parentHeight) * 100)}%`;
+        delete styles.minHeight;
+      } else if (node.y !== null) {
+        styles.top = `${Math.round(node.y)}px`;
+      }
+      break;
+    case "start":
+    default:
+      styles.top = `${Math.round(node.y ?? 0)}px`;
+      break;
+  }
+
+  if (transforms.length > 0) {
+    styles.transform = transforms.join(" ");
+  }
+}
+
+function roundPercent(value: number) {
+  return Math.round(value * 1000) / 1000;
+}
+
+function roundCssNumber(value: number) {
+  return Math.round(value * 1000) / 1000;
+}
+
+function buildAttributes(node: ParsedNode) {
+  const attributes: Record<string, string> = {
+    "data-figma-node-id": node.id,
+    "data-figma-node-type": node.type,
+  };
+
+  if (!node.componentMeta) {
+    return attributes;
+  }
+
+  attributes["data-figma-component-kind"] = node.componentMeta.kind;
+
+  if (node.componentMeta.componentId) {
+    attributes["data-figma-component-id"] = node.componentMeta.componentId;
+  }
+
+  if (node.componentMeta.componentKey) {
+    attributes["data-figma-component-key"] = node.componentMeta.componentKey;
+  }
+
+  if (node.componentMeta.componentName) {
+    attributes["data-figma-component-name"] = node.componentMeta.componentName;
+  }
+
+  if (node.componentMeta.componentSetId) {
+    attributes["data-figma-component-set-id"] = node.componentMeta.componentSetId;
+  }
+
+  if (node.componentMeta.propertyKeys.length > 0) {
+    attributes["data-figma-component-props"] = node.componentMeta.propertyKeys.join(",");
+  }
+
+  return attributes;
+}
+
+function applyTextSizing(styles: Record<string, string>, node: ParsedNode) {
+  switch (node.textAutoResize) {
+    case "width-and-height":
+      styles.width = "max-content";
+      styles.maxWidth = "100%";
+      break;
+    case "height":
+      delete styles.minHeight;
+      break;
+    case "truncate":
+      if (node.maxLines && node.maxLines > 1) {
+        styles.display = "-webkit-box";
+        styles.webkitBoxOrient = "vertical";
+        styles.webkitLineClamp = `${node.maxLines}`;
+        styles.overflow = "hidden";
+      } else if (node.textTruncation === "ending") {
+        styles.overflow = "hidden";
+        styles.textOverflow = "ellipsis";
+        styles.whiteSpace = "nowrap";
+      }
+      break;
+    default:
+      break;
+  }
 }

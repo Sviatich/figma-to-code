@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readFigmaSnapshot } from "@/lib/figma/snapshots";
 
-export async function GET(_request: Request, context: RouteContext<"/api/figma/snapshots/[snapshotId]">) {
+export async function GET(_request: Request, context: { params: Promise<{ snapshotId: string }> }) {
   try {
     const { snapshotId } = await context.params;
     const snapshot = await readFigmaSnapshot(snapshotId);
