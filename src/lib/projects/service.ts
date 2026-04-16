@@ -36,6 +36,7 @@ export async function createProject(request: TransformProjectRequest): Promise<P
     fileName: pipeline.resolvedFile.fileName,
     selectedNodeId: request.selectedNodeId,
     selectedNodeName: pipeline.transformedNode.name,
+    selectedNodeWidth: pipeline.parsedNode.width ?? null,
     summary: pipeline.generatedArtifacts.summary,
     previewHtml: pipeline.generatedArtifacts.previewHtml,
     generatedAt: pipeline.generatedArtifacts.generatedAt,

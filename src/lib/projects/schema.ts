@@ -39,6 +39,7 @@ export const projectRecordSchema = z.object({
   fileName: z.string(),
   selectedNodeId: z.string(),
   selectedNodeName: z.string(),
+  selectedNodeWidth: z.number().nullable().optional(),
   summary: z.string(),
   previewHtml: z.string(),
   generatedAt: z.string(),

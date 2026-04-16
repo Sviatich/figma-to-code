@@ -35,7 +35,7 @@ type FileTreeNode = {
   children?: FileTreeNode[];
 };
 
-type PreviewMode = "desktop" | "tablet" | "mobile";
+type PreviewMode = "full-width" | "desktop" | "tablet" | "mobile";
 
 SyntaxHighlighter.registerLanguage("tsx", tsx);
 SyntaxHighlighter.registerLanguage("typescript", typescript);
@@ -121,6 +121,47 @@ export function WorkspaceShell({ projectId }: WorkspaceShellProps) {
         </div>
 
         <div className={styles.headerActions}>
+          {activeView === "preview" ? (
+            <div className={styles.previewDeviceSwitch}>
+              <button
+                type="button"
+                className={`${styles.previewDeviceTab} ${previewMode === "full-width" ? styles.previewDeviceTabActive : ""}`}
+                onClick={() => setPreviewMode("full-width")}
+                aria-label="Full width preview"
+                title="Full width"
+              >
+                <StretchIcon />
+              </button>
+              <button
+                type="button"
+                className={`${styles.previewDeviceTab} ${previewMode === "desktop" ? styles.previewDeviceTabActive : ""}`}
+                onClick={() => setPreviewMode("desktop")}
+                aria-label="Desktop preview"
+                title="Desktop"
+              >
+                <DesktopIcon />
+              </button>
+              <button
+                type="button"
+                className={`${styles.previewDeviceTab} ${previewMode === "tablet" ? styles.previewDeviceTabActive : ""}`}
+                onClick={() => setPreviewMode("tablet")}
+                aria-label="Tablet preview"
+                title="Tablet"
+              >
+                <TabletIcon />
+              </button>
+              <button
+                type="button"
+                className={`${styles.previewDeviceTab} ${previewMode === "mobile" ? styles.previewDeviceTabActive : ""}`}
+                onClick={() => setPreviewMode("mobile")}
+                aria-label="Mobile preview"
+                title="Mobile"
+              >
+                <MobileIcon />
+              </button>
+            </div>
+          ) : null}
+
           <div className={styles.switcher}>
             <button
               className={`${styles.switchTab} ${activeView === "preview" ? styles.switchTabActive : ""}`}
@@ -148,43 +189,11 @@ export function WorkspaceShell({ projectId }: WorkspaceShellProps) {
       <section className={styles.surface}>
         {activeView === "preview" ? (
           <div className={styles.previewShell}>
-            <div className={styles.previewToolbar}>
-              <div className={styles.previewDeviceSwitch}>
-                <button
-                  type="button"
-                  className={`${styles.previewDeviceTab} ${previewMode === "desktop" ? styles.previewDeviceTabActive : ""}`}
-                  onClick={() => setPreviewMode("desktop")}
-                  aria-label="Desktop preview"
-                  title="Desktop"
-                >
-                  <DesktopIcon />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.previewDeviceTab} ${previewMode === "tablet" ? styles.previewDeviceTabActive : ""}`}
-                  onClick={() => setPreviewMode("tablet")}
-                  aria-label="Tablet preview"
-                  title="Tablet"
-                >
-                  <TabletIcon />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.previewDeviceTab} ${previewMode === "mobile" ? styles.previewDeviceTabActive : ""}`}
-                  onClick={() => setPreviewMode("mobile")}
-                  aria-label="Mobile preview"
-                  title="Mobile"
-                >
-                  <MobileIcon />
-                </button>
-              </div>
-            </div>
-
             <div className={styles.previewStage}>
               <div className={`${styles.previewViewport} ${styles[getPreviewViewportClassName(previewMode)]}`}>
                 <iframe
                   className={styles.previewFrame}
-                  src={`/api/projects/${project.id}/preview`}
+                  src={`/api/projects/${project.id}/preview${previewMode === "full-width" ? "?layout=full-width" : ""}`}
                   title={`Preview for ${project.name}`}
                 />
               </div>
@@ -323,6 +332,19 @@ function BackIcon() {
   );
 }
 
+function StretchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.deviceIcon}>
+      <path d="M4 9V5H8" />
+      <path d="M16 5H20V9" />
+      <path d="M20 15V19H16" />
+      <path d="M8 19H4V15" />
+      <path d="M9 5H15" />
+      <path d="M9 19H15" />
+    </svg>
+  );
+}
+
 function DesktopIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.deviceIcon}>
@@ -449,6 +471,8 @@ function getSyntaxLanguage(language?: string) {
 
 function getPreviewViewportClassName(mode: PreviewMode) {
   switch (mode) {
+    case "full-width":
+      return "previewViewportFullWidth";
     case "desktop":
       return "previewViewportDesktop";
     case "tablet":

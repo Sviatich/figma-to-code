@@ -98,6 +98,28 @@ export type TransformedNode = {
   className: string;
   textContent: string;
   role: "layout" | "content" | "control";
+  semanticKind:
+    | "container"
+    | "section"
+    | "media"
+    | "icon"
+    | "button"
+    | "link"
+    | "card"
+    | "list"
+    | "list-item"
+    | "nav-group";
+  sectionPattern:
+    | "none"
+    | "hero"
+    | "header"
+    | "footer"
+    | "split"
+    | "card-grid"
+    | "journal-list"
+    | "testimonial"
+    | "cta"
+    | "stack";
   isComponentCandidate: boolean;
   attributes: Record<string, string>;
   styles: Record<string, string>;

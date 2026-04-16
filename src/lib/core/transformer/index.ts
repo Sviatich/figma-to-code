@@ -3,10 +3,15 @@ import type { ParsedNode, TransformedNode } from "../types";
 export function transformNode(
   node: ParsedNode,
   parentLayoutMode: ParsedNode["layout"]["mode"] | "root" = "root",
+  insideInteractiveAncestor = false,
 ): TransformedNode {
   // Transformer назначает более честный HTML-тег и переносит веб-стили.
-  const role = inferRole(node);
-  const tag = inferTag(node, role);
+  const role = inferRole(node, insideInteractiveAncestor);
+  const tag = inferTag(node, role, insideInteractiveAncestor);
+  const semanticKind = inferSemanticKind(node, role, tag, insideInteractiveAncestor);
+  const sectionPattern = inferSectionPattern(node, semanticKind);
+  const childInsideInteractiveAncestor =
+    insideInteractiveAncestor || semanticKind === "link" || semanticKind === "button";
 
   return {
     id: node.id,
@@ -16,27 +21,39 @@ export function transformNode(
     className: buildClassName(node.id, node.name, role),
     textContent: node.textContent,
     role,
+    semanticKind,
+    sectionPattern,
     isComponentCandidate: ["COMPONENT", "INSTANCE"].includes(node.type),
-    attributes: buildAttributes(node),
+    attributes: buildAttributes(node, semanticKind, sectionPattern),
     styles: buildStyles(node, role, parentLayoutMode),
-    children: sortChildrenForLayout(node).map((child) => transformNode(child, node.layout.mode)),
+    children: sortChildrenForLayout(node).map((child) =>
+      transformNode(child, node.layout.mode, childInsideInteractiveAncestor),
+    ),
   };
 }
 
-function inferRole(node: ParsedNode): TransformedNode["role"] {
+function inferRole(node: ParsedNode, insideInteractiveAncestor: boolean): TransformedNode["role"] {
   if (node.type === "TEXT") {
     return "content";
   }
 
-  if (looksLikeButton(node)) {
+  if (!insideInteractiveAncestor && looksLikeButton(node)) {
     return "control";
   }
 
   return "layout";
 }
 
-function inferTag(node: ParsedNode, role: TransformedNode["role"]) {
+function inferTag(
+  node: ParsedNode,
+  role: TransformedNode["role"],
+  insideInteractiveAncestor: boolean,
+) {
   const lowerName = node.name.toLowerCase();
+
+  if (role === "control") {
+    return "button";
+  }
 
   if (node.backgroundImageUrl) {
     if (lowerName.includes("header") || lowerName.includes("hero") || lowerName.includes("banner")) {
@@ -54,11 +71,11 @@ function inferTag(node: ParsedNode, role: TransformedNode["role"]) {
     return "img";
   }
 
-  if (role === "control") {
-    return "button";
-  }
-
   if (node.type === "TEXT") {
+    if (!insideInteractiveAncestor && looksLikeLink(node)) {
+      return "a";
+    }
+
     if (node.fontSize && node.fontSize >= 40) {
       return "h1";
     }
@@ -72,6 +89,10 @@ function inferTag(node: ParsedNode, role: TransformedNode["role"]) {
     }
 
     return "p";
+  }
+
+  if (!insideInteractiveAncestor && looksLikeLink(node)) {
+    return "a";
   }
 
   if (lowerName.includes("header") || lowerName.includes("nav")) {
@@ -91,6 +112,108 @@ function inferTag(node: ParsedNode, role: TransformedNode["role"]) {
   }
 
   return "div";
+}
+
+function inferSemanticKind(
+  node: ParsedNode,
+  role: TransformedNode["role"],
+  tag: TransformedNode["tag"],
+  insideInteractiveAncestor: boolean,
+): TransformedNode["semanticKind"] {
+  if (role === "control" || tag === "button") {
+    return "button";
+  }
+
+  if (!insideInteractiveAncestor && (tag === "a" || looksLikeLink(node))) {
+    return "link";
+  }
+
+  if (looksLikeIcon(node, tag)) {
+    return "icon";
+  }
+
+  if (looksLikeMedia(node, tag)) {
+    return "media";
+  }
+
+  if (looksLikeNavGroup(node)) {
+    return "nav-group";
+  }
+
+  if (looksLikeList(node)) {
+    return "list";
+  }
+
+  if (looksLikeListItem(node)) {
+    return "list-item";
+  }
+
+  if (looksLikeCard(node)) {
+    return "card";
+  }
+
+  if (tag === "section" || tag === "header" || tag === "footer" || tag === "main") {
+    return "section";
+  }
+
+  return "container";
+}
+
+function inferSectionPattern(
+  node: ParsedNode,
+  semanticKind: TransformedNode["semanticKind"],
+): TransformedNode["sectionPattern"] {
+  const lowerName = node.name.toLowerCase();
+  const flowChildren = node.children.filter((child) => child.layoutPositioning !== "absolute");
+  const mediaChildren = flowChildren.filter((child) => looksLikeMedia(child));
+  const cardChildren = flowChildren.filter((child) => looksLikeCard(child));
+  const listItemChildren = flowChildren.filter((child) => looksLikeListItem(child) || child.name.toLowerCase().includes("item"));
+
+  if (lowerName.includes("hero")) {
+    return "hero";
+  }
+
+  if (lowerName.includes("header") || lowerName.includes("nav")) {
+    return "header";
+  }
+
+  if (lowerName.includes("footer")) {
+    return "footer";
+  }
+
+  if (lowerName.includes("testimonial") || lowerName.includes("quote")) {
+    return "testimonial";
+  }
+
+  if (lowerName.includes("journal") || lowerName.includes("blog")) {
+    return "journal-list";
+  }
+
+  if (lowerName.includes("call to action") || lowerName === "cta" || lowerName.includes("cta")) {
+    return "cta";
+  }
+
+  if (node.layout.mode === "row" && flowChildren.length === 2 && mediaChildren.length >= 1) {
+    return "split";
+  }
+
+  if (node.layout.mode === "row" && flowChildren.length === 3 && mediaChildren.length === 1 && listItemChildren.length >= 1) {
+    return "split";
+  }
+
+  if (node.layout.mode === "row" && cardChildren.length >= 3) {
+    return "card-grid";
+  }
+
+  if (semanticKind === "list" || listItemChildren.length >= 3) {
+    return "journal-list";
+  }
+
+  if (node.layout.mode === "column" && flowChildren.length >= 3) {
+    return "stack";
+  }
+
+  return "none";
 }
 
 function buildClassName(id: string, name: string, role: TransformedNode["role"]) {
@@ -114,7 +237,6 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
   };
   const isRenderedAssetImage = Boolean(node.assetUrl && !node.backgroundImageUrl);
   const isFlexChild = parentLayoutMode !== "none" && parentLayoutMode !== "root";
-  const isAutoLayoutNode = node.layout.mode !== "none";
   const isAbsolutelyPositioned = node.layoutPositioning === "absolute";
 
   if (node.layout.mode !== "none") {
@@ -228,7 +350,7 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
       styles.flexGrow = `${node.layoutGrow}`;
       styles.flexShrink = "1";
       styles.minWidth = "0";
-    } else if (!isAbsolutelyPositioned && parentLayoutMode === "root" && isAutoLayoutNode) {
+    } else if (!isAbsolutelyPositioned && parentLayoutMode === "root") {
       styles.width = "100%";
       styles.maxWidth = "100%";
       styles.minWidth = "0";
@@ -333,7 +455,7 @@ function buildStyles(node: ParsedNode, role: TransformedNode["role"], parentLayo
     styles.maxWidth = "100%";
   }
 
-  if (parentLayoutMode !== "none") {
+  if (parentLayoutMode !== "none" && parentLayoutMode !== "root") {
     if (node.layoutAlign === "center") {
       styles.alignSelf = "center";
     }
@@ -356,11 +478,23 @@ function looksLikeButton(node: ParsedNode) {
     lowerName.includes("button") ||
     lowerName === "cta" ||
     lowerName.endsWith("-button") ||
-    lowerName.includes("btn");
+    lowerName.includes("btn") ||
+    node.componentMeta?.componentName?.toLowerCase().includes("button") === true;
 
   const hasChildren = node.children.length > 0;
   const hasOwnText = Boolean(node.textContent.trim());
-  const isLeafLikeControl = !hasChildren || (hasChildren && node.children.every((child) => child.type === "TEXT"));
+  const iconOrTextOnlyChildren =
+    hasChildren &&
+    node.children.every(
+      (child) =>
+        child.type === "TEXT" ||
+        Boolean(child.assetUrl) ||
+        child.type === "VECTOR" ||
+        child.type === "BOOLEAN_OPERATION" ||
+        child.name.toLowerCase().includes("icon") ||
+        child.name.toLowerCase().includes("bullet"),
+    );
+  const isLeafLikeControl = !hasChildren || iconOrTextOnlyChildren;
   const hasCompactHeight = node.height !== null && node.height <= 96;
 
   if (!looksLikeActionName) {
@@ -368,6 +502,161 @@ function looksLikeButton(node: ParsedNode) {
   }
 
   return isLeafLikeControl && (hasOwnText || hasChildren) && hasCompactHeight;
+}
+
+function looksLikeLink(node: ParsedNode) {
+  const lowerName = node.name.toLowerCase();
+  const lowerComponentName = node.componentMeta?.componentName?.toLowerCase() ?? "";
+  const directTextChildren = node.children.filter((child) => child.type === "TEXT");
+  const directVisualChildren = node.children.filter(
+    (child) => Boolean(child.assetUrl) || ["VECTOR", "BOOLEAN_OPERATION", "STAR", "LINE"].includes(child.type),
+  );
+  const firstTextChild = directTextChildren[0];
+  const hasCompactHeight = node.height !== null && node.height <= 64;
+  const hasText = Boolean(node.textContent.trim()) || node.children.some((child) => child.type === "TEXT");
+  const ownText = node.textContent.trim();
+  const hasUnderline =
+    node.textDecoration === "underline" || directTextChildren.some((child) => child.textDecoration === "underline");
+  const hasVisualChrome = Boolean(
+    node.backgroundColor ||
+      node.backgroundGradient ||
+      node.borderColor ||
+      (node.borderWidth && node.borderWidth > 0) ||
+      (node.cornerRadius && node.cornerRadius > 0) ||
+      (node.cornerRadii && node.cornerRadii.some((radius) => radius > 0)) ||
+      node.boxShadow,
+  );
+  const isHeadingLikeText =
+    node.type === "TEXT" &&
+    ((node.fontSize ?? 0) >= 24 ||
+      lowerName.includes("title") ||
+      lowerName.includes("heading") ||
+      lowerName.includes("headline") ||
+      lowerName.includes("subtitle"));
+  const isShortStandaloneTextLink =
+    node.type === "TEXT" &&
+    ownText.length > 0 &&
+    ownText.length <= 24 &&
+    ownText.split(/\s+/).length <= 3 &&
+    !/[.,:;!?]/.test(ownText) &&
+    (node.fontSize ?? 0) <= 18 &&
+    !isHeadingLikeText &&
+    ((node.fontWeight ?? 400) <= 600 || hasUnderline) &&
+    hasCompactHeight;
+  const linkishName =
+    lowerName.includes("link") ||
+    lowerName.includes("nav") ||
+    lowerName.includes("menu") ||
+    lowerName.includes("menu item") ||
+    lowerName.includes("footer link") ||
+    lowerName.includes("footer nav") ||
+    lowerComponentName.includes("link") ||
+    lowerComponentName.includes("nav");
+  const simpleInlineContainer =
+    node.layout.mode === "row" &&
+    node.children.length > 0 &&
+    node.children.length <= 2 &&
+    directTextChildren.length === 1 &&
+    directVisualChildren.length <= 1 &&
+    !hasVisualChrome &&
+    (firstTextChild?.fontSize ?? 0) <= 18 &&
+    node.children.every(
+      (child) =>
+        child.type === "TEXT" ||
+        Boolean(child.assetUrl) ||
+        ["VECTOR", "BOOLEAN_OPERATION", "STAR", "LINE"].includes(child.type),
+    );
+
+  if (looksLikeButton(node) || looksLikeNavGroup(node)) {
+    return false;
+  }
+
+  if (!hasCompactHeight || !hasText || isHeadingLikeText) {
+    return false;
+  }
+
+  if (linkishName) {
+    return true;
+  }
+
+  if (node.type === "TEXT") {
+    return isShortStandaloneTextLink;
+  }
+
+  return simpleInlineContainer && hasUnderline;
+}
+
+function looksLikeMedia(node: ParsedNode, tag?: string) {
+  return Boolean(
+    node.backgroundImageUrl ||
+      node.assetUrl ||
+      tag === "img" ||
+      ["VECTOR", "BOOLEAN_OPERATION", "STAR", "LINE"].includes(node.type),
+  );
+}
+
+function looksLikeIcon(node: ParsedNode, tag?: string) {
+  const lowerName = node.name.toLowerCase();
+  const smallSquare =
+    node.width !== null &&
+    node.height !== null &&
+    node.width <= 72 &&
+    node.height <= 72 &&
+    Math.abs(node.width - node.height) <= 16;
+
+  return Boolean(
+    (looksLikeMedia(node, tag) && smallSquare) ||
+      lowerName.includes("icon") ||
+      lowerName.includes("arrow") ||
+      lowerName.includes("bullet"),
+  );
+}
+
+function looksLikeCard(node: ParsedNode) {
+  const hasVisualChrome = Boolean(
+    node.backgroundColor ||
+      node.backgroundGradient ||
+      node.borderColor ||
+      (node.borderWidth && node.borderWidth > 0) ||
+      (node.cornerRadius && node.cornerRadius > 0) ||
+      (node.cornerRadii && node.cornerRadii.some((radius) => radius > 0)) ||
+      node.boxShadow,
+  );
+
+  return hasVisualChrome && (node.children.length > 0 || Boolean(node.textContent.trim()));
+}
+
+function looksLikeList(node: ParsedNode) {
+  const lowerName = node.name.toLowerCase();
+
+  if (lowerName.includes("list") || lowerName.includes("items") || lowerName.includes("articles")) {
+    return true;
+  }
+
+  return node.layout.mode === "column" && node.children.length >= 3;
+}
+
+function looksLikeListItem(node: ParsedNode) {
+  const lowerName = node.name.toLowerCase();
+
+  if (lowerName.includes("item") || lowerName.includes("article")) {
+    return true;
+  }
+
+  return node.children.some((child) => child.type === "TEXT") && (node.borderWidth !== null || node.borderColor !== null);
+}
+
+function looksLikeNavGroup(node: ParsedNode) {
+  const lowerName = node.name.toLowerCase();
+
+  return (
+    lowerName.includes("nav items") ||
+    lowerName.includes("main nav") ||
+    lowerName.includes("footer nav") ||
+    (node.layout.mode === "row" &&
+      node.children.length >= 3 &&
+      node.children.every((child) => looksLikeLink(child) || child.type === "TEXT"))
+  );
 }
 
 function mapJustifyContent(value: ParsedNode["layout"]["primaryAxisAlign"]) {
@@ -607,11 +896,24 @@ function roundCssNumber(value: number) {
   return Math.round(value * 1000) / 1000;
 }
 
-function buildAttributes(node: ParsedNode) {
+function buildAttributes(
+  node: ParsedNode,
+  semanticKind: TransformedNode["semanticKind"],
+  sectionPattern: TransformedNode["sectionPattern"],
+) {
   const attributes: Record<string, string> = {
     "data-figma-node-id": node.id,
     "data-figma-node-type": node.type,
+    "data-semantic-kind": semanticKind,
   };
+
+  if (sectionPattern !== "none") {
+    attributes["data-section-pattern"] = sectionPattern;
+  }
+
+  if (semanticKind === "link") {
+    attributes.href = "#";
+  }
 
   if (!node.componentMeta) {
     return attributes;

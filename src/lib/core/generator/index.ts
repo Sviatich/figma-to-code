@@ -1,4 +1,9 @@
-import type { GeneratedFile, GeneratedFontAsset, GeneratedProjectArtifacts, TransformedNode } from "../types";
+import type {
+  GeneratedFile,
+  GeneratedFontAsset,
+  GeneratedProjectArtifacts,
+  TransformedNode,
+} from "../types";
 
 type GenerateProjectParams = {
   projectName: string;
@@ -99,6 +104,14 @@ function toTsxMarkup(node: TransformedNode, indent: number): string {
   const spaces = " ".repeat(indent);
   const attrs = [`className={styles["${node.className}"]}`, ...toJsxAttributes(node.attributes)];
 
+  if (node.tag === "button" && !("type" in node.attributes)) {
+    attrs.push(`type="button"`);
+  }
+
+  if (node.tag === "a" && !("href" in node.attributes)) {
+    attrs.push(`href="#"`);
+  }
+
   if (node.tag === "img") {
     const assetUrl = node.styles.__assetUrl;
     attrs.push(`src="${escapeAttribute(assetUrl ?? "")}"`);
@@ -122,7 +135,17 @@ function toTsxMarkup(node: TransformedNode, indent: number): string {
 
 function toHtmlMarkup(node: TransformedNode, indent: number): string {
   const spaces = " ".repeat(indent);
-  const extraAttrs = toHtmlAttributes(node.attributes);
+  const htmlAttributes = { ...node.attributes };
+
+  if (node.tag === "button" && !("type" in htmlAttributes)) {
+    htmlAttributes.type = "button";
+  }
+
+  if (node.tag === "a" && !("href" in htmlAttributes)) {
+    htmlAttributes.href = "#";
+  }
+
+  const extraAttrs = toHtmlAttributes(htmlAttributes);
 
   if (node.tag === "img") {
     const assetUrl = node.styles.__assetUrl;
@@ -173,6 +196,20 @@ body {
   overflow: auto;
 }
 
+a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a:hover,
+a:focus,
+a:active,
+a:visited {
+  color: inherit;
+  text-decoration: none;
+}
+
 img {
   display: block;
 }
@@ -197,7 +234,8 @@ img {
     const defaults: string[] = [];
 
     if (depth === 0) {
-      defaults.push("  margin: 32px auto;");
+      defaults.push("  width: 100%;");
+      defaults.push("  min-width: 0;");
       defaults.push("  max-width: none;");
     }
 
@@ -275,15 +313,15 @@ img {
   ].filter(Boolean);
 
   if (tabletRules.length > 0) {
-    blocks.push(`@media (max-width: 1200px) {\n${indentBlock(tabletRules.join("\n\n"), 2)}\n}`);
+    blocks.push(`@media (min-width: 768px) and (max-width: 1200px) {\n${indentBlock(tabletRules.join("\n\n"), 2)}\n}`);
   }
 
   if (mobileRules.length > 0) {
-    blocks.push(`@media (max-width: 900px) {\n${indentBlock(mobileRules.join("\n\n"), 2)}\n}`);
+    blocks.push(`@media (max-width: 767px) {\n${indentBlock(mobileRules.join("\n\n"), 2)}\n}`);
   }
 
   if (compactRules.length > 0) {
-    blocks.push(`@media (max-width: 600px) {\n${indentBlock(compactRules.join("\n\n"), 2)}\n}`);
+    blocks.push(`@media (max-width: 599px) {\n${indentBlock(compactRules.join("\n\n"), 2)}\n}`);
   }
 
   return blocks.join("\n\n");
@@ -374,6 +412,12 @@ function toHtmlAttributes(attributes: Record<string, string>) {
 }
 
 function buildResponsiveRules(node: TransformedNode) {
+  const sectionRules = buildSectionResponsiveRules(node);
+
+  if (sectionRules) {
+    return sectionRules;
+  }
+
   if (isFooterLikeContainer(node)) {
     return buildFooterResponsiveRules(node);
   }
@@ -437,7 +481,7 @@ ${childSelectors[mediaTextPair.textIndex]} {
   flex: 1 1 0;
   width: auto;
 }`
-    : isCardGrid || shouldCollapseToTwoColumns
+    : isCardGrid
       ? `.${node.className} {
   flex-wrap: wrap;
   align-items: stretch;
@@ -452,12 +496,14 @@ ${childSelectorList} {
 }`
       : `.${node.className} {
   flex-wrap: wrap;
+  align-items: stretch;
   gap: ${tabletGap};
 }
 
 ${childSelectorList} {
   min-width: 0;
   max-width: 100%;
+${shouldCollapseToTwoColumns ? "\n  flex-basis: auto;\n  width: auto;" : ""}
 }`;
 
   const mobile = mediaTextPair && shouldStackMediaPair
@@ -511,16 +557,18 @@ ${childSelectorList} {
 }`
     : shouldCollapseToTwoColumns
       ? `.${node.className} {
-  flex-wrap: wrap;
+  flex-direction: column;
+  flex-wrap: nowrap;
   align-items: stretch;
   gap: ${mobileGap};
 }
 
 ${childSelectorList} {
-  flex: 1 1 calc(50% - ${halfGap});
-  width: calc(50% - ${halfGap});
-  max-width: calc(50% - ${halfGap});
-  min-width: min(280px, 100%);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-basis: auto;
+  align-self: stretch;
 }`
       : `.${node.className} {
   flex-wrap: wrap;
@@ -556,6 +604,25 @@ ${childSelectors[mixedTriptych.mediaIndex]} {
     mobile,
     compact,
   };
+}
+
+function buildSectionResponsiveRules(node: TransformedNode) {
+  switch (node.sectionPattern) {
+    case "header":
+      return buildHeaderResponsiveRules(node);
+    case "footer":
+      return buildFooterResponsiveRules(node);
+    case "hero":
+    case "split":
+    case "testimonial":
+      return buildSplitSectionResponsiveRules(node);
+    case "card-grid":
+      return buildCardGridResponsiveRules(node);
+    case "journal-list":
+      return buildJournalResponsiveRules(node);
+    default:
+      return null;
+  }
 }
 
 function isResponsiveRowCandidate(node: TransformedNode) {
@@ -733,6 +800,194 @@ ${childSelectorList} {
   flex-wrap: nowrap;
   align-items: stretch;
   justify-content: flex-start;
+  gap: ${compactGap};
+}
+
+${childSelectorList} {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-basis: auto;
+  align-self: stretch;
+}`,
+  };
+}
+
+function buildSplitSectionResponsiveRules(node: TransformedNode) {
+  if (node.styles.display !== "flex") {
+    return null;
+  }
+
+  const flowChildren = node.children.filter((child) => child.styles.position !== "absolute");
+  const childSelectors = flowChildren.map((child) => `.${node.className} > .${child.className}`);
+  const mediaChildren = flowChildren.filter((child) => child.semanticKind === "media");
+  const nonMediaChildren = flowChildren.filter((child) => child.semanticKind !== "media" && child.semanticKind !== "icon");
+
+  if (childSelectors.length < 2 || flowChildren.length > 3 || mediaChildren.length === 0 || nonMediaChildren.length === 0) {
+    return null;
+  }
+
+  const gapValue = parsePixelValue(node.styles.gap);
+  const tabletGap = `${Math.min(gapValue || 24, 32)}px`;
+  const mobileGap = `${Math.min(gapValue || 18, 22)}px`;
+  const compactGap = `${Math.min(gapValue || 14, 18)}px`;
+  const childSelectorList = childSelectors.join(",\n");
+
+  return {
+    tablet: `.${node.className} {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: ${tabletGap};
+}
+
+${childSelectorList} {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-basis: auto;
+  align-self: stretch;
+}`,
+    mobile: `.${node.className} {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: ${mobileGap};
+}
+
+${childSelectorList} {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-basis: auto;
+  align-self: stretch;
+}`,
+    compact: `.${node.className} {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: ${compactGap};
+}
+
+${childSelectorList} {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-basis: auto;
+  align-self: stretch;
+}`,
+  };
+}
+
+function buildCardGridResponsiveRules(node: TransformedNode) {
+  if (node.styles.display !== "flex" || node.styles.flexDirection !== "row") {
+    return null;
+  }
+
+  const flowChildren = node.children.filter((child) => child.styles.position !== "absolute");
+  const childSelectors = flowChildren.map((child) => `.${node.className} > .${child.className}`);
+
+  if (childSelectors.length < 2) {
+    return null;
+  }
+
+  const gapValue = parsePixelValue(node.styles.gap);
+  const tabletGap = `${Math.min(gapValue || 20, 24)}px`;
+  const mobileGap = `${Math.min(gapValue || 16, 18)}px`;
+  const compactGap = `${Math.min(gapValue || 12, 14)}px`;
+  const tabletHalfGap = `${Math.round((parsePixelValue(tabletGap) / 2) * 100) / 100}px`;
+  const mobileHalfGap = `${Math.round((parsePixelValue(mobileGap) / 2) * 100) / 100}px`;
+  const childSelectorList = childSelectors.join(",\n");
+
+  return {
+    tablet: `.${node.className} {
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: ${tabletGap};
+}
+
+${childSelectorList} {
+  flex: 1 1 calc(50% - ${tabletHalfGap});
+  width: calc(50% - ${tabletHalfGap});
+  max-width: calc(50% - ${tabletHalfGap});
+  min-width: min(280px, 100%);
+}`,
+    mobile: `.${node.className} {
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: ${mobileGap};
+}
+
+${childSelectorList} {
+  flex: 1 1 calc(50% - ${mobileHalfGap});
+  width: calc(50% - ${mobileHalfGap});
+  max-width: calc(50% - ${mobileHalfGap});
+  min-width: min(240px, 100%);
+}`,
+    compact: `.${node.className} {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: ${compactGap};
+}
+
+${childSelectorList} {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-basis: auto;
+  align-self: stretch;
+}`,
+  };
+}
+
+function buildJournalResponsiveRules(node: TransformedNode) {
+  if (node.styles.display !== "flex") {
+    return null;
+  }
+
+  const flowChildren = node.children.filter((child) => child.styles.position !== "absolute");
+  const childSelectors = flowChildren.map((child) => `.${node.className} > .${child.className}`);
+
+  if (childSelectors.length < 2) {
+    return null;
+  }
+
+  const gapValue = parsePixelValue(node.styles.gap);
+  const tabletGap = `${Math.min(gapValue || 16, 20)}px`;
+  const mobileGap = `${Math.min(gapValue || 14, 16)}px`;
+  const compactGap = `${Math.min(gapValue || 12, 14)}px`;
+  const childSelectorList = childSelectors.join(",\n");
+
+  return {
+    tablet: `.${node.className} {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: ${tabletGap};
+}
+
+${childSelectorList} {
+  min-width: 0;
+  max-width: 100%;
+}`,
+    mobile: `.${node.className} {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: ${mobileGap};
+}
+
+${childSelectorList} {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-basis: auto;
+  align-self: stretch;
+}`,
+    compact: `.${node.className} {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
   gap: ${compactGap};
 }
 
