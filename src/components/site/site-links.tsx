@@ -49,27 +49,32 @@ export function SiteLinks({ className = "" }: SiteLinksProps) {
       return;
     }
 
-    router.refresh();
+    router.replace("/");
   }
 
   return (
-    <nav className={`${styles.links} ${className}`.trim()} aria-label="Служебная навигация">
-      <Link href="/privacy-policy">Privacy Policy</Link>
-      <Link href="/about">About</Link>
-      <Link href="/doc">Doc</Link>
-      <a href="https://github.com/Sviatich/figma-to-code" target="_blank" rel="noreferrer">
-        GitHub
-      </a>
-      {sessionQuery.data?.connected ? (
-        <a href="/api/auth/figma/logout" onClick={handleLogout}>
-          <ReturnIcon />
-          &nbsp;Сменить аккаунт
+    <div className={`${styles.footer} ${className}`.trim()}>
+      <nav className={styles.links} aria-label="Служебная навигация">
+        <Link href="/privacy-policy">Privacy Policy</Link>
+        <Link href="/about">About</Link>
+        <Link href="/doc">Docs</Link>
+        <a href="https://github.com/Sviatich/figma-to-code" target="_blank" rel="noreferrer">
+          GitHub
         </a>
-      ) : null}
-    </nav>
+        {sessionQuery.data?.connected ? (
+          <a href="/api/auth/figma/logout" onClick={handleLogout}>
+            <ReturnIcon />
+            &nbsp;Сменить аккаунт
+          </a>
+        ) : null}
+      </nav>
+
+      <div className={styles.disclaimer} aria-label="Правовая информация">
+        <p>© 2026 Frameforge. This product is an independent tool that utilizes the Figma API. It is not affiliated with, endorsed, or sponsored by Figma, Inc. Figma is a trademark of Figma, Inc.</p>
+      </div>
+    </div>
   );
 }
-
 
 function ReturnIcon() {
   return (

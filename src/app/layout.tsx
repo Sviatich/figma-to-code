@@ -14,7 +14,7 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Transfig",
+  title: "FrameForge",
   description: "Сервис для поэтапной трансляции Figma-макетов в код через parser, transformer, generator и exporter.",
 };
 

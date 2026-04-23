@@ -1,6 +1,6 @@
-# Transfig
+# FrameForge
 
-`Transfig` теперь собран вокруг модульного pipeline:
+`FrameForge` теперь собран вокруг модульного pipeline:
 
 `Figma API -> Parser -> Transformer -> Generator -> Export`
 

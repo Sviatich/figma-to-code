@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ZodError } from "zod";
@@ -19,6 +18,7 @@ type FrameOption = {
   name: string;
   type: string;
   depth: number;
+  hasAutoLayout: boolean;
 };
 
 type LoadResult = {
@@ -136,6 +136,8 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
   async function handleLoad() {
     try {
       setError("");
+      setLoadResult(null);
+      setActiveFrameId(null);
       setIsLoadingFrames(true);
       setProgress(24);
 
@@ -219,15 +221,6 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
     <main className={styles.page}>
       <section className={styles.shell}>
         <header className={styles.intro}>
-          <Image
-            className={styles.brandMark}
-            src="/brand-mark.png"
-            alt=""
-            aria-hidden="true"
-            width={58}
-            height={58}
-            priority
-          />
           <h1 className={styles.title}>Figma to code</h1>
           <p className={styles.description}>
             Выпускная квалификационная работа Петрина Святослава Андреевича
@@ -287,7 +280,7 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
             <div className={styles.framesHeader}>
               <div>
                 <strong>{loadResult.fileName}</strong>
-                <p className={styles.hint}>Выберите frame для рендера. После клика рабочая область откроется сразу.</p>
+                <p className={styles.hint}>Выберите frame для рендера</p>
               </div>
             </div>
 
@@ -301,9 +294,20 @@ export function ImportShell({ figmaState, figmaReason }: ImportShellProps) {
                   disabled={activeFrameId !== null}
                 >
                   <strong>{frame.name}</strong>
-                  <span className={styles.frameMeta}>
-                    {frame.type} · node {frame.id}
+                  <span
+                    className={`${styles.frameMeta} ${styles.frameStatus} ${
+                      frame.hasAutoLayout ? styles.frameStatusReady : styles.frameStatusWarning
+                    }`}
+                  >
+                    {frame.hasAutoLayout ? <ReadyIcon /> : <WarningIcon />}
+                    <span>{frame.hasAutoLayout ? "Auto Layout используется" : "AutoLayout не используется"}</span>
                   </span>
+                  {false ? (
+                    <span className={`${styles.frameMeta} ${styles.frameWarning}`}>
+                      <WarningIcon />
+                      <span>Рекомендуем использовать Auto Layout</span>
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -361,6 +365,29 @@ function FigmaIcon() {
         d="M8 16C8 18.2091 9.79086 20 12 20H16V12H12C9.79086 12 8 13.7909 8 16Z"
         fill="#A259FF"
       />
+    </svg>
+  );
+}
+
+function WarningIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={styles.warningIcon}>
+      <path
+        d="M12 15H12.01M12 12V9M4.98207 19H19.0179C20.5615 19 21.5233 17.3256 20.7455 15.9923L13.7276 3.96153C12.9558 2.63852 11.0442 2.63852 10.2724 3.96153L3.25452 15.9923C2.47675 17.3256 3.43849 19 4.98207 19Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ReadyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={styles.warningIcon}>
+      <path d="M12,2C6.5,2,2,6.5,2,12s4.5,10,10,10s10-4.5,10-10S17.5,2,12,2z M12,20c-4.5,0-8-3.5-8-8s3.5-8,8-8s8,3.5,8,8 S16.5,20,12,20z" fill="currentColor" />
+      <polygon points="9.8,16.8 6.1,13.2 7.5,11.7 9.8,14 15.5,7.9 17,9.3" fill="currentColor" />
     </svg>
   );
 }

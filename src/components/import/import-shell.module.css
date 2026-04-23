@@ -18,13 +18,6 @@
   justify-items: center;
 }
 
-.brandMark {
-  width: 58px;
-  height: 58px;
-  display: block;
-  object-fit: contain;
-}
-
 .title {
   font-size: clamp(2.8rem, 8vw, 6.3rem);
   line-height: 0.94;
@@ -51,7 +44,7 @@
 .authCard,
 .framesCard {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .authHeader,
@@ -60,6 +53,8 @@
   justify-content: space-between;
   gap: 12px;
   align-items: center;
+  /* border-bottom: 1px solid var(--line); */
+  /* padding-bottom: 14px; */
 }
 
 .toolbarRight {
@@ -118,7 +113,8 @@
 
 .linkInput:focus-visible {
   border-color: rgba(20, 32, 51, 0.24);
-  box-shadow: 0 0 0 3px rgba(20, 32, 51, 0.08);
+  background: #f4f4f4;
+  /* box-shadow: 0 0 0 3px rgba(20, 32, 51, 0.08); */
 }
 
 .primaryButton:hover:not(:disabled) {
@@ -216,8 +212,8 @@
 
 .framesGrid {
   display: grid;
-  gap: 12px;
-  max-height: min(420px, 55vh);
+  /* gap: 6px; */
+  max-height: min(230px, 55vh);
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -225,21 +221,27 @@
 .frameCard {
   display: grid;
   gap: 8px;
-  padding: 16px 18px;
+  padding: 16px 10px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  /* border-radius: 5px; */
   background: rgba(255, 255, 255, 0.76);
   text-align: left;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
     background 180ms ease;
+    border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.frameCard:last-child {
+    border-bottom: none;
 }
 
 .frameCard:hover {
-  transform: translateY(-2px);
-  border-color: rgba(20, 32, 51, 0.12);
-  background: rgba(247, 249, 255, 0.94);
+  /* transform: translateX(4px); */
+  /* border-color: rgba(20, 32, 51, 0.12); */
+  background: #f7f7f7;
 }
 
 .frameCard:focus-visible {
@@ -253,8 +255,41 @@
 }
 
 .frameCardActive {
-  border-color: rgba(20, 32, 51, 0.22);
-  background: rgba(216, 226, 255, 0.72);
+  /* border-color: rgba(20, 32, 51, 0.22);
+  background: rgba(216, 226, 255, 0.72); */
+  background: #f7f7f7;
+}
+
+.frameWarning {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #b86a17;
+  /* line-height: 1.5; */
+  font-size: 12px;
+}
+
+.frameStatus {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  /* line-height: 1.5; */
+  font-size: 12px;
+}
+
+.frameStatusWarning {
+  color: #b86a17;
+}
+
+.frameStatusReady {
+  color: var(--ink-soft);
+}
+
+.warningIcon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin-top: 0px;
 }
 
 @media (max-width: 720px) {
@@ -264,7 +299,6 @@
 
   .panel {
     padding: 16px;
-    border-radius: 24px;
   }
 
   .authHeader,

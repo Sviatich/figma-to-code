@@ -20,6 +20,7 @@ export const frameOptionSchema = z.object({
   name: z.string(),
   type: z.string(),
   depth: z.number(),
+  hasAutoLayout: z.boolean().optional().default(false),
 });
 
 export const generatedFileSchema = z.object({

@@ -45,6 +45,7 @@ export function collectFrameOptions(root: FigmaRawNode): FigmaFrameOption[] {
         name: node.name ?? "Untitled",
         type: nodeType,
         depth: 0,
+        hasAutoLayout: hasAutoLayout(node),
       },
     ];
   });
@@ -67,4 +68,12 @@ export function findNodeById(root: FigmaRawNode, nodeId: string): FigmaRawNode |
 function walkTree(node: FigmaRawNode, visitor: (node: FigmaRawNode, depth: number) => void, depth = 0) {
   visitor(node, depth);
   node.children?.forEach((child) => walkTree(child, visitor, depth + 1));
+}
+
+function hasAutoLayout(node: FigmaRawNode): boolean {
+  if (node.layoutMode && node.layoutMode !== "NONE") {
+    return true;
+  }
+
+  return node.children?.some((child) => hasAutoLayout(child)) ?? false;
 }

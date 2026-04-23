@@ -189,9 +189,7 @@ body {
 
 body {
   color: var(--ink);
-  background:
-    radial-gradient(circle at top, rgba(164, 196, 255, 0.24), transparent 26%),
-    linear-gradient(180deg, #fbfcff 0%, var(--app-bg) 100%);
+  background: var(--app-bg);
   font-family: var(--font-sans, "Segoe UI", sans-serif);
   overflow: auto;
 }

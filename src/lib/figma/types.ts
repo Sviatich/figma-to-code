@@ -149,6 +149,7 @@ export type FigmaFrameOption = {
   name: string;
   type: string;
   depth: number;
+  hasAutoLayout: boolean;
 };
 
 export type FigmaResolvedFile = {

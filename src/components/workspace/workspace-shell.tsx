@@ -68,6 +68,7 @@ export function WorkspaceShell({ projectId }: WorkspaceShellProps) {
 
   const project = projectQuery.data;
   const files = useMemo(() => project?.files ?? [], [project?.files]);
+  const selectedFrame = project?.availableFrames.find((frame) => frame.id === project.selectedNodeId);
 
   const selectedFile = useMemo(() => {
     if (files.length === 0) {
@@ -114,9 +115,23 @@ export function WorkspaceShell({ projectId }: WorkspaceShellProps) {
 
           <div className={styles.projectTitleBlock}>
             <span className={styles.projectTitle}>{project.name}</span>
-            <span className={styles.projectMeta}>
-              {project.selectedNodeName} · node {project.selectedNodeId} · {formatGeneratedAt(project.generatedAt)}
-            </span>
+            <span className={styles.projectMeta}>{project.selectedNodeName}</span>
+            {selectedFrame ? (
+              <span
+                className={`${styles.projectMeta} ${styles.projectStatus} ${
+                  selectedFrame.hasAutoLayout ? styles.projectStatusReady : styles.projectStatusWarning
+                }`}
+              >
+                {selectedFrame.hasAutoLayout ? <ReadyIcon /> : <WarningIcon />}
+                <span>{selectedFrame.hasAutoLayout ? "Auto Layout используется" : "AutoLayout не используется"}</span>
+              </span>
+            ) : null}
+            {false ? (
+              <span className={`${styles.projectMeta} ${styles.projectWarning}`}>
+                <WarningIcon />
+                <span>Рекомендуем использовать Auto Layout</span>
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -334,13 +349,12 @@ function BackIcon() {
 
 function StretchIcon() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.deviceIcon}>
-      <path d="M4 9V5H8" />
-      <path d="M16 5H20V9" />
-      <path d="M20 15V19H16" />
-      <path d="M8 19H4V15" />
-      <path d="M9 5H15" />
-      <path d="M9 19H15" />
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={styles.deviceIcon}>
+      <path stroke="none" d="M0 0h24v24H0z" />
+      <path d="M10 12h-7l3 -3m0 6l-3 -3" />
+      <path d="M14 12h7l-3 -3m0 6l3 -3" />
+      <path d="M3 6v-3h18v3" />
+      <path d="M3 18v3h18v-3" />
     </svg>
   );
 }
@@ -484,18 +498,25 @@ function getPreviewViewportClassName(mode: PreviewMode) {
   }
 }
 
-function formatGeneratedAt(value: string) {
-  const date = new Date(value);
+function WarningIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={styles.warningIcon}>
+      <path
+        d="M12 15H12.01M12 12V9M4.98207 19H19.0179C20.5615 19 21.5233 17.3256 20.7455 15.9923L13.7276 3.96153C12.9558 2.63852 11.0442 2.63852 10.2724 3.96153L3.25452 15.9923C2.47675 17.3256 3.43849 19 4.98207 19Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+function ReadyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className={styles.warningIcon}>
+      <path d="M12,2C6.5,2,2,6.5,2,12s4.5,10,10,10s10-4.5,10-10S17.5,2,12,2z M12,20c-4.5,0-8-3.5-8-8s3.5-8,8-8s8,3.5,8,8 S16.5,20,12,20z" fill="currentColor" />
+      <polygon points="9.8,16.8 6.1,13.2 7.5,11.7 9.8,14 15.5,7.9 17,9.3" fill="currentColor" />
+    </svg>
+  );
 }
