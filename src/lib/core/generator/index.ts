@@ -101,29 +101,55 @@ ${previewMarkup}
 }
 
 function toTsxMarkup(node: TransformedNode, indent: number): string {
-  const spaces = " ".repeat(indent);
-  const attrs = [`className={styles["${node.className}"]}`, ...toJsxAttributes(node.attributes)];
+  return renderMarkup(node, indent, "tsx");
+}
 
-  if (node.tag === "button" && !("type" in node.attributes)) {
-    attrs.push(`type="button"`);
+function toHtmlMarkup(node: TransformedNode, indent: number): string {
+  return renderMarkup(node, indent, "html");
+}
+
+type BurgerHeaderConfig = {
+  navChild: TransformedNode;
+};
+
+function renderMarkup(
+  node: TransformedNode,
+  indent: number,
+  mode: "tsx" | "html",
+  extraClasses: string[] = [],
+): string {
+  const burgerConfig = getBurgerHeaderConfig(node);
+
+  if (burgerConfig) {
+    return renderBurgerHeader(node, burgerConfig, indent, mode);
   }
 
-  if (node.tag === "a" && !("href" in node.attributes)) {
-    attrs.push(`href="#"`);
+  const spaces = " ".repeat(indent);
+  const attributes = { ...node.attributes };
+  const attrs = [toClassAttribute([node.className, ...extraClasses], mode), ...toMarkupAttributes(attributes)];
+
+  if (node.tag === "button" && !("type" in attributes)) {
+    attrs.push(toAttribute("type", "button"));
+  }
+
+  if (node.tag === "a" && !("href" in attributes)) {
+    attrs.push(toAttribute("href", "#"));
   }
 
   if (node.tag === "img") {
     const assetUrl = node.styles.__assetUrl;
-    attrs.push(`src="${escapeAttribute(assetUrl ?? "")}"`);
-    attrs.push(`alt="${escapeAttribute(node.name)}"`);
+    attrs.push(toAttribute("src", assetUrl ?? ""));
+    attrs.push(toAttribute("alt", node.name));
     return `${spaces}<img ${attrs.join(" ")} />`;
   }
 
-  const children = node.children.map((child) => toTsxMarkup(child, indent + 2)).join("\n");
-  const text = node.textContent ? escapeJsx(node.textContent) : "";
+  const children = node.children.map((child) => renderMarkup(child, indent + 2, mode)).join("\n");
+  const text = node.textContent ? toMarkupText(node.textContent, mode) : "";
 
   if (!children && !text) {
-    return `${spaces}<${node.tag} ${attrs.join(" ")} />`;
+    return mode === "html"
+      ? `${spaces}<${node.tag} ${attrs.join(" ")}></${node.tag}>`
+      : `${spaces}<${node.tag} ${attrs.join(" ")} />`;
   }
 
   if (!children) {
@@ -133,37 +159,42 @@ function toTsxMarkup(node: TransformedNode, indent: number): string {
   return `${spaces}<${node.tag} ${attrs.join(" ")}>\n${text ? `${spaces}  ${text}\n` : ""}${children}\n${spaces}</${node.tag}>`;
 }
 
-function toHtmlMarkup(node: TransformedNode, indent: number): string {
+function renderBurgerHeader(
+  node: TransformedNode,
+  config: BurgerHeaderConfig,
+  indent: number,
+  mode: "tsx" | "html",
+) {
   const spaces = " ".repeat(indent);
-  const htmlAttributes = { ...node.attributes };
+  const toggleId = buildBurgerToggleId(node);
+  const toggleClass = `${node.className}-burger-toggle`;
+  const buttonClass = `${node.className}-burger-button`;
+  const iconClass = `${node.className}-burger-icon`;
+  const srClass = `${node.className}-burger-sr`;
+  const panelClass = `${node.className}-burger-panel`;
+  const headerAttrs = [toClassAttribute([node.className], mode), ...toMarkupAttributes(node.attributes)];
+  const toggleAttrs = [
+    toClassAttribute([toggleClass], mode),
+    toAttribute("type", "checkbox"),
+    toAttribute("id", toggleId),
+    toAttribute("aria-label", "Toggle navigation"),
+  ];
+  const labelAttrs = [
+    toClassAttribute([buttonClass], mode),
+    toAttribute(mode === "tsx" ? "htmlFor" : "for", toggleId),
+  ];
+  const childrenMarkup = node.children
+    .map((child) => {
+      if (child.id !== config.navChild.id) {
+        return renderMarkup(child, indent + 2, mode);
+      }
 
-  if (node.tag === "button" && !("type" in htmlAttributes)) {
-    htmlAttributes.type = "button";
-  }
+      const navMarkup = renderMarkup(child, indent + 2, mode, [panelClass]);
+      return `${spaces}  <input ${toggleAttrs.join(" ")} />\n${spaces}  <label ${labelAttrs.join(" ")}>\n${spaces}    <span ${toClassAttribute([iconClass], mode)}></span>\n${spaces}    <span ${toClassAttribute([srClass], mode)}>${toMarkupText("Открыть меню", mode)}</span>\n${spaces}  </label>\n${navMarkup}`;
+    })
+    .join("\n");
 
-  if (node.tag === "a" && !("href" in htmlAttributes)) {
-    htmlAttributes.href = "#";
-  }
-
-  const extraAttrs = toHtmlAttributes(htmlAttributes);
-
-  if (node.tag === "img") {
-    const assetUrl = node.styles.__assetUrl;
-    return `${spaces}<img class="${node.className}"${extraAttrs ? ` ${extraAttrs}` : ""} src="${escapeAttribute(assetUrl ?? "")}" alt="${escapeAttribute(node.name)}" />`;
-  }
-
-  const children = node.children.map((child) => toHtmlMarkup(child, indent + 2)).join("\n");
-  const text = node.textContent ? escapeHtml(node.textContent) : "";
-
-  if (!children && !text) {
-    return `${spaces}<${node.tag} class="${node.className}"${extraAttrs ? ` ${extraAttrs}` : ""}></${node.tag}>`;
-  }
-
-  if (!children) {
-    return `${spaces}<${node.tag} class="${node.className}"${extraAttrs ? ` ${extraAttrs}` : ""}>${text}</${node.tag}>`;
-  }
-
-  return `${spaces}<${node.tag} class="${node.className}"${extraAttrs ? ` ${extraAttrs}` : ""}>\n${text ? `${spaces}  ${text}\n` : ""}${children}\n${spaces}</${node.tag}>`;
+  return `${spaces}<${node.tag} ${headerAttrs.join(" ")}>\n${childrenMarkup}\n${spaces}</${node.tag}>`;
 }
 
 function toCss(root: TransformedNode, fontAssets: GeneratedFontAsset[]) {
@@ -250,6 +281,12 @@ img {
     }
 
     blocks.push(`.${node.className} {\n${[declarations, ...defaults].filter(Boolean).join("\n") || "  position: relative;"}\n}`);
+
+    const extraBlocks = buildAdditionalCssBlocks(node);
+
+    if (extraBlocks.length > 0) {
+      blocks.push(...extraBlocks);
+    }
 
     const responsiveRules = buildResponsiveRules(node);
 
@@ -399,14 +436,142 @@ function indentBlock(value: string, indent: number) {
     .join("\n");
 }
 
-function toJsxAttributes(attributes: Record<string, string>) {
-  return Object.entries(attributes).map(([key, value]) => `${key}="${escapeAttribute(value)}"`);
+function toClassAttribute(classes: string[], mode: "tsx" | "html") {
+  const filtered = classes.filter(Boolean);
+
+  if (mode === "tsx") {
+    return `className={[${filtered.map((className) => `styles["${className}"]`).join(", ")}].join(" ")}`;
+  }
+
+  return `class="${filtered.join(" ")}"`;
 }
 
-function toHtmlAttributes(attributes: Record<string, string>) {
-  return Object.entries(attributes)
-    .map(([key, value]) => `${key}="${escapeAttribute(value)}"`)
-    .join(" ");
+function toMarkupAttributes(attributes: Record<string, string>) {
+  return Object.entries(attributes).map(([key, value]) => toAttribute(key, value));
+}
+
+function toAttribute(key: string, value: string) {
+  return `${key}="${escapeAttribute(value)}"`;
+}
+
+function toMarkupText(value: string, mode: "tsx" | "html") {
+  return mode === "tsx" ? escapeJsx(value) : escapeHtml(value);
+}
+
+function buildBurgerToggleId(node: TransformedNode) {
+  const safeId = node.id
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `nav-toggle-${safeId || "header"}`;
+}
+
+function getBurgerHeaderConfig(node: TransformedNode): BurgerHeaderConfig | null {
+  if (!isHeaderLikeContainer(node)) {
+    return null;
+  }
+
+  const flowChildren = node.children.filter((child) => child.styles.position !== "absolute");
+
+  if (flowChildren.length !== 2) {
+    return null;
+  }
+
+  const navIndex = flowChildren.findIndex(isLikelyNavLinksGroup);
+
+  if (navIndex !== 1) {
+    return null;
+  }
+
+  return {
+    navChild: flowChildren[1],
+  };
+}
+
+function buildAdditionalCssBlocks(node: TransformedNode) {
+  if (!getBurgerHeaderConfig(node)) {
+    return [];
+  }
+
+  const toggleClass = `${node.className}-burger-toggle`;
+  const buttonClass = `${node.className}-burger-button`;
+  const iconClass = `${node.className}-burger-icon`;
+  const srClass = `${node.className}-burger-sr`;
+
+  return [
+    `.${toggleClass} {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}`,
+    `.${buttonClass} {
+  display: none;
+  margin-left: auto;
+  align-items: center;
+  justify-content: center;
+  inline-size: 48px;
+  block-size: 48px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}`,
+    `.${iconClass},
+.${iconClass}::before,
+.${iconClass}::after {
+  display: block;
+  inline-size: 18px;
+  block-size: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 180ms ease, opacity 180ms ease;
+  content: "";
+}`,
+    `.${iconClass} {
+  position: relative;
+}`,
+    `.${iconClass}::before {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: -6px;
+}`,
+    `.${iconClass}::after {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 6px;
+}`,
+    `.${toggleClass}:checked + .${buttonClass} .${iconClass} {
+  background: transparent;
+}`,
+    `.${toggleClass}:checked + .${buttonClass} .${iconClass}::before {
+  transform: translateY(6px) rotate(45deg);
+}`,
+    `.${toggleClass}:checked + .${buttonClass} .${iconClass}::after {
+  transform: translateY(-6px) rotate(-45deg);
+}`,
+    `.${srClass} {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}`,
+  ];
 }
 
 function buildResponsiveRules(node: TransformedNode) {
@@ -674,6 +839,7 @@ function buildHeaderResponsiveRules(node: TransformedNode) {
   const flowChildren = node.children.filter((child) => child.styles.position !== "absolute");
   const childSelectors = flowChildren.map((child) => `.${node.className} > .${child.className}`);
   const navLinksIndex = flowChildren.findIndex(isLikelyNavLinksGroup);
+  const burgerConfig = getBurgerHeaderConfig(node);
 
   if (childSelectors.length < 2) {
     return {
@@ -688,6 +854,119 @@ function buildHeaderResponsiveRules(node: TransformedNode) {
   const mobileGap = `${Math.min(gapValue || 14, 16)}px`;
   const compactGap = `${Math.min(gapValue || 12, 12)}px`;
   const childSelectorList = childSelectors.join(",\n");
+
+  if (burgerConfig) {
+    const toggleClass = `${node.className}-burger-toggle`;
+    const buttonClass = `${node.className}-burger-button`;
+    const panelClass = `${node.className}-burger-panel`;
+    const panelChildrenSelector = `.${panelClass} > *`;
+
+    return {
+      tablet: `.${node.className} {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${tabletGap};
+}
+
+${childSelectorList} {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.${buttonClass} {
+  display: inline-flex;
+}
+
+.${panelClass} {
+  display: none;
+  flex-basis: 100%;
+  width: 100%;
+  order: 3;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+${panelChildrenSelector} {
+  width: 100%;
+  min-width: 0;
+}
+
+.${toggleClass}:checked + .${buttonClass} + .${panelClass} {
+  display: flex;
+}`,
+      mobile: `.${node.className} {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${mobileGap};
+}
+
+${childSelectorList} {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.${buttonClass} {
+  display: inline-flex;
+}
+
+.${panelClass} {
+  display: none;
+  flex-basis: 100%;
+  width: 100%;
+  order: 3;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+${panelChildrenSelector} {
+  width: 100%;
+  min-width: 0;
+}
+
+.${toggleClass}:checked + .${buttonClass} + .${panelClass} {
+  display: flex;
+}`,
+      compact: `.${node.className} {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${compactGap};
+}
+
+${childSelectorList} {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.${buttonClass} {
+  display: inline-flex;
+}
+
+.${panelClass} {
+  display: none;
+  flex-basis: 100%;
+  width: 100%;
+  order: 3;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+${panelChildrenSelector} {
+  width: 100%;
+  min-width: 0;
+}
+
+.${toggleClass}:checked + .${buttonClass} + .${panelClass} {
+  display: flex;
+}`,
+    };
+  }
+
   const navLinksTabletRule =
     navLinksIndex >= 0
       ? `
